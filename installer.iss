@@ -68,8 +68,12 @@ FinishedHeadingLabel=Whatever IT PC Care is ready
 FinishedLabelNoIcons=Setup has finished installing [name] on your computer.
 FinishedLabel=Setup has finished installing [name] on your computer. You can start it from the desktop shortcut or the Start menu.
 
-[Tasks]
-Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"
+; NOTE: The desktop shortcut is intentionally created by the APP itself on
+; first launch (see src/Helpers/ShortcutHelper.cs), NOT here. Having both the
+; installer and the app create one produced TWO identical desktop icons (one on
+; the shared "all users" desktop, one on the signed-in user's desktop). The app
+; targets the real current-user desktop and honours folder redirection, so it is
+; the single source of truth for the desktop icon.
 
 [Files]
 ; The single-file self-contained build - no .NET install needed on the customer PC.
@@ -80,7 +84,6 @@ Source: "src\Assets\app.ico"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\app.ico"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"; IconFilename: "{app}\app.ico"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\app.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Launch {#AppName} now"; Flags: nowait postinstall skipifsilent

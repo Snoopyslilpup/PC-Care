@@ -46,45 +46,59 @@ public partial class HealthScanner
         return list;
     }
 
+    // Shared across scans so the temperature history/trend keeps building up.
+    private readonly TemperatureMonitor _temp = new();
+
     private IEnumerable<HealthItem> CheckCpuTemperature()
     {
-        double? hottest = null;
-        try
-        {
-            using var s = new ManagementObjectSearcher(
-                @"root\WMI", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
-            foreach (ManagementObject mo in s.Get())
-            {
-                double tenthKelvin = Convert.ToDouble(mo["CurrentTemperature"]);
-                double celsius = tenthKelvin / 10.0 - 273.15;
-                if (celsius > 0 && celsius < 150 && (hottest == null || celsius > hottest))
-                    hottest = celsius;
-            }
-        }
-        catch { }
+        var r = _temp.Sample(record: true);
 
-        if (hottest == null)
+        if (!r.HasTemperature)
         {
-            yield return Info("Hardware", "Temperature",
+            yield return Info("Hardware", "Temperature & cooling",
                 "This PC's firmware does not share temperature sensors with Windows (common on " +
-                "desktops). The exact temperatures can be read from the BIOS/UEFI screen or the " +
-                "motherboard maker's own tool.");
+                "desktops). Install a free hardware-monitor tool, or read the temperatures from the " +
+                "BIOS/UEFI screen, to turn on temperature tracking here.");
             yield break;
         }
 
-        var status = hottest > 90 ? HealthStatus.Critical
-                   : hottest > 80 ? HealthStatus.Warning
+        string trendText = r.Trend switch
+        {
+            TempTrend.Rising => "trending up",
+            TempTrend.Falling => "trending down",
+            TempTrend.Steady => "holding steady",
+            _ => "building a trend (needs a few more scans)"
+        };
+
+        string fanText = r.FanRpm is int rpm && rpm > 0 ? $", fan ~{rpm} RPM" : "";
+        string peakText = r.SampleCount > 1
+            ? $", peak {r.PeakC:0} \u00b0C over last {r.SampleCount} checks"
+            : "";
+
+        // Alert thresholds. A hot-AND-rising reading is flagged even below the
+        // hard warning line, so the user can act before a thermal shutdown.
+        var status = r.CurrentC > 90 ? HealthStatus.Critical
+                   : r.CurrentC > 80 ? HealthStatus.Warning
+                   : (r.Trend == TempTrend.Rising && r.CurrentC > 70) ? HealthStatus.Warning
                    : HealthStatus.Good;
+
+        string explanation = status == HealthStatus.Critical
+            ? "The PC is very hot and close to the point where it will throttle hard or shut itself " +
+              "down to protect the hardware. Shut it down, let it cool, and make sure the fans are " +
+              "spinning and clear of dust before using it again."
+            : status == HealthStatus.Warning
+                ? "The PC is running warm" + (r.Trend == TempTrend.Rising ? " and the temperature is climbing" : "") +
+                  ". Catching this early means you can clear dust from the fans and vents or improve " +
+                  "airflow before heat forces a shutdown."
+                : "Temperature is in a healthy range and " + trendText + ".";
+
         yield return new HealthItem
         {
             Category = "Hardware",
-            Title = "Temperature (thermal zone)",
+            Title = "Temperature & cooling",
             Status = status,
-            Detail = $"About {hottest:0} \u00b0C",
-            Explanation = status == HealthStatus.Good
-                ? "The system thermal sensor is in a normal range."
-                : "The PC is running hot. Heat makes it throttle and shut down. Check the fans are " +
-                  "spinning and clear of dust, and that vents are not blocked."
+            Detail = $"About {r.CurrentC:0} \u00b0C now ({trendText}){peakText}{fanText}",
+            Explanation = explanation
         };
     }
 

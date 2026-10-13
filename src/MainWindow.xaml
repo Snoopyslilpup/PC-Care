@@ -1,0 +1,332 @@
+<Window x:Class="WhateverITPCCare.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:h="clr-namespace:WhateverITPCCare.Helpers"
+        Title="Whatever IT PC Care" Height="760" Width="1040"
+        MinHeight="620" MinWidth="900"
+        Icon="/Assets/wolf-logo.png"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BgBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <h:StringToBrushConverter x:Key="ToBrush"/>
+        <h:NullToVisibilityConverter x:Key="NullVis"/>
+        <h:BoolToVisibilityConverter x:Key="BoolVis"/>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="b" Background="Transparent" Padding="18,10" Margin="0,0,6,0" CornerRadius="8">
+                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===== Wolf "Scan PC" animations ===== -->
+        <Storyboard x:Key="WolfScanLoop">
+            <DoubleAnimation Storyboard.TargetName="ScanArcRotate" Storyboard.TargetProperty="Angle"
+                             From="0" To="360" Duration="0:0:1.3" RepeatBehavior="Forever"/>
+            <DoubleAnimation Storyboard.TargetName="WolfScanArc" Storyboard.TargetProperty="Opacity"
+                             To="0.95" Duration="0:0:0.25"/>
+            <DoubleAnimation Storyboard.TargetName="WolfRotate" Storyboard.TargetProperty="Angle"
+                             From="-7" To="7" Duration="0:0:0.45" AutoReverse="True" RepeatBehavior="Forever"/>
+            <DoubleAnimation Storyboard.TargetName="WolfScale" Storyboard.TargetProperty="ScaleX"
+                             From="1" To="1.08" Duration="0:0:0.45" AutoReverse="True" RepeatBehavior="Forever"/>
+            <DoubleAnimation Storyboard.TargetName="WolfScale" Storyboard.TargetProperty="ScaleY"
+                             From="1" To="1.08" Duration="0:0:0.45" AutoReverse="True" RepeatBehavior="Forever"/>
+        </Storyboard>
+
+        <!-- One-shot "howl / pounce" when the scan finishes -->
+        <Storyboard x:Key="WolfHowl">
+            <DoubleAnimation Storyboard.TargetName="WolfScale" Storyboard.TargetProperty="ScaleX"
+                             From="1" To="1.22" Duration="0:0:0.16" AutoReverse="True"/>
+            <DoubleAnimation Storyboard.TargetName="WolfScale" Storyboard.TargetProperty="ScaleY"
+                             From="1" To="1.22" Duration="0:0:0.16" AutoReverse="True"/>
+            <DoubleAnimation Storyboard.TargetName="WolfLogo" Storyboard.TargetProperty="Opacity"
+                             From="0.55" To="1" Duration="0:0:0.3"/>
+        </Storyboard>
+    </Window.Resources>
+
+    <Grid Margin="22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ===== Header ===== -->
+        <Border Style="{StaticResource Card}" Grid.Row="0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Assets/wolf-logo.png" Width="58" Height="58" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Whatever IT" FontSize="22" FontWeight="Bold"/>
+                        <TextBlock Text="PC Care" FontSize="22" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentBrush}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                    <TextBlock Text="Wolfing down your IT issues" FontStyle="Italic" FontSize="12.5"
+                               Foreground="{StaticResource AccentBrush}" Margin="0,2,0,6"/>
+                    <TextBlock x:Name="PcLine" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0" FontSize="13"/>
+                    <TextBlock x:Name="OsLine" Foreground="{StaticResource MutedBrush}" FontSize="13"/>
+                    <TextBlock x:Name="SpecLine" Foreground="{StaticResource MutedBrush}" FontSize="13"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Grid Width="96" Height="96" Margin="0,0,18,0">
+                        <Ellipse x:Name="ScoreRing" Stroke="{StaticResource GoodBrush}" StrokeThickness="7" Fill="{StaticResource Card2Brush}"/>
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock x:Name="ScoreText" Text="—" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="health" FontSize="11" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                    <Button x:Name="ScanButton" Style="{StaticResource PrimaryButton}"
+                            Height="64" MinWidth="176" Padding="16,0" Click="OnScan">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- ===== Wolf logo (animated on click) ===== -->
+                            <Grid x:Name="WolfLogo" Width="46" Height="46" Margin="0,0,12,0"
+                                  RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform x:Name="WolfScale" ScaleX="1" ScaleY="1"/>
+                                        <RotateTransform x:Name="WolfRotate" Angle="0"/>
+                                    </TransformGroup>
+                                </Grid.RenderTransform>
+                                <Ellipse x:Name="WolfScanArc" Width="46" Height="46" Opacity="0"
+                                         Stroke="{StaticResource ScanArcBrush}" StrokeThickness="3"
+                                         StrokeDashArray="3 2.4" RenderTransformOrigin="0.5,0.5">
+                                    <Ellipse.RenderTransform>
+                                        <RotateTransform x:Name="ScanArcRotate" Angle="0"/>
+                                    </Ellipse.RenderTransform>
+                                </Ellipse>
+                                <Viewbox Width="38" Height="38">
+                                    <Image Width="100" Height="100" Source="/Assets/wolf-logo.png" Stretch="Uniform"/>
+                                </Viewbox>
+                            </Grid>
+                            <TextBlock x:Name="ScanLabel" Text="Scan PC" FontSize="16" FontWeight="Bold"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== Tabs ===== -->
+        <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" Padding="0,14,0,0">
+
+            <!-- Diagnostics -->
+            <TabItem Header="Diagnostics">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="ScanStatus" Grid.Row="0" Margin="2,4,0,10"
+                               Foreground="{StaticResource MutedBrush}"
+                               Text="Click &quot;Scan my PC&quot; to check your computer’s health. Scanning only reads information – it never changes anything."/>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="ResultsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource Card}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="6"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" CornerRadius="3" Width="6" Margin="0,0,14,0"
+                                                    Background="{Binding StatusColor, Converter={StaticResource ToBrush}}"/>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="15"/>
+                                                <TextBlock Text="{Binding Detail}" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
+                                                <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="12.5"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                <Border CornerRadius="6" Padding="10,4" HorizontalAlignment="Right"
+                                                        Background="{Binding StatusColor, Converter={StaticResource ToBrush}}">
+                                                    <TextBlock Text="{Binding StatusText}" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                                                </Border>
+                                                <Button Content="Fix this" Margin="0,8,0,0" Tag="{Binding RepairId}"
+                                                        Style="{StaticResource PrimaryButton}" Padding="12,6" Click="OnFixThis"
+                                                        Visibility="{Binding RepairId, Converter={StaticResource NullVis}}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- Safe Repairs -->
+            <TabItem Header="Safe Repairs">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Margin="2,4,0,10" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}"
+                                   Text="These are safe, well-known maintenance actions. Each one explains exactly what it does before you run it. Advanced repairs are part of the Pro plan."/>
+                        <ItemsControl x:Name="RepairsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource Card}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="15"/>
+                                                    <Border CornerRadius="5" Padding="7,2" Margin="10,0,0,0" Background="{StaticResource AccentBrush}"
+                                                            Visibility="{Binding ProOnly, Converter={StaticResource BoolVis}}">
+                                                        <TextBlock Text="PRO" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                                    </Border>
+                                                    <Border CornerRadius="5" Padding="7,2" Margin="8,0,0,0" Background="{StaticResource Card2Brush}"
+                                                            Visibility="{Binding RequiresAdmin, Converter={StaticResource BoolVis}}">
+                                                        <TextBlock Text="Needs admin" FontSize="10" Foreground="{StaticResource MutedBrush}"/>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="12.5"
+                                                           Foreground="{StaticResource MutedBrush}"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="Run" VerticalAlignment="Center" Width="96"
+                                                    Style="{StaticResource PrimaryButton}" Tag="{Binding Id}" Click="OnRunRepair"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Plan & Billing -->
+            <TabItem Header="Plan &amp; Billing">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel MaxWidth="640" HorizontalAlignment="Left">
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Your plan" FontSize="16" FontWeight="Bold"/>
+                                <TextBlock x:Name="LicenseStatus" Margin="0,8,0,0" TextWrapping="Wrap"
+                                           Foreground="{StaticResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Basic" FontSize="16" FontWeight="Bold"/>
+                                        <TextBlock Text="R65 / month" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource AccentBrush}" Margin="12,2,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12.5"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               Text="Unlocks the one-click safe repairs – clear temporary files, empty the Recycle Bin and refresh your network – on top of the free diagnostics."/>
+                                </StackPanel>
+                                <Button x:Name="BasicActionButton" Grid.Column="1" Content="Get Basic" Width="130"
+                                        VerticalAlignment="Center" Style="{StaticResource PrimaryButton}" Click="OnGetBasic"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Pro" FontSize="16" FontWeight="Bold"/>
+                                        <TextBlock Text="R99 / month" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource AccentBrush}" Margin="12,2,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12.5"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               Text="Everything in Basic, plus the advanced repairs: repair Windows system files (SFC), repair the Windows image (DISM) and fix stuck Windows Update."/>
+                                </StackPanel>
+                                <Button x:Name="ProActionButton" Grid.Column="1" Content="Get Pro" Width="130"
+                                        VerticalAlignment="Center" Style="{StaticResource PrimaryButton}" Click="OnGetPro"/>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Margin="4,2,0,0" TextWrapping="Wrap" FontSize="11.5"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   Text="Plans are billed monthly through our secure payment partner. Your plan activates automatically the moment payment is confirmed – no key to type, no email to wait for. If a monthly payment is missed, the plan simply pauses until you renew."/>
+
+                        <Expander Header="Already have a licence key?" Margin="0,12,0,0"
+                                  Foreground="{StaticResource MutedBrush}">
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Licensed to (name)" FontSize="12" Foreground="{StaticResource MutedBrush}"/>
+                                    <TextBox x:Name="NameBox" Margin="0,4,0,10" Padding="8" FontSize="13"
+                                             Background="{StaticResource Card2Brush}" Foreground="{StaticResource TextBrush}" BorderThickness="0"/>
+                                    <TextBlock Text="Licence key" FontSize="12" Foreground="{StaticResource MutedBrush}"/>
+                                    <TextBox x:Name="KeyBox" Margin="0,4,0,12" Padding="8" FontSize="13"
+                                             Background="{StaticResource Card2Brush}" Foreground="{StaticResource TextBrush}" BorderThickness="0"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Activate" Style="{StaticResource PrimaryButton}" Click="OnActivate"/>
+                                        <Button Content="Remove licence" Style="{StaticResource GhostButton}" Margin="10,0,0,0" Click="OnDeactivate"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Help -->
+            <TabItem Header="Help &amp; Contact">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel MaxWidth="680" HorizontalAlignment="Left">
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="What this tool does" FontSize="16" FontWeight="Bold"/>
+                                <TextBlock Margin="0,8,0,0" TextWrapping="Wrap"
+                                   Text="Whatever IT PC Care checks your computer’s health, explains in plain language what it finds, and offers safe fixes you can run yourself. It is an honest diagnostic tool – it will not pretend to magically make a PC faster."/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="When something needs a technician" FontSize="16" FontWeight="Bold"/>
+                                <TextBlock Margin="0,8,0,4" TextWrapping="Wrap"
+                                   Text="Some problems – failing hardware, stubborn malware, or repairs that carry risk – are safer in expert hands. If a scan flags something beyond a safe self-fix, give Whatever IT a call – a technician picks up, not a call centre."/>
+                                <TextBlock Margin="0,2,0,12" FontSize="20" FontWeight="Bold"
+                                           Foreground="{StaticResource AccentBrush}" Text="010 025 0564"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="📞  Call Whatever IT" Style="{StaticResource PrimaryButton}" Click="OnContact"/>
+                                    <Button Content="Visit our website" Style="{StaticResource GhostButton}" Margin="10,0,0,0" Click="OnWebsite"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock x:Name="VersionLine" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="4,4,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Zero-dependency licensing test harness.
+    It links the REAL licensing source files straight from the app (no copies,
+    no NuGet packages) and runs a set of assertions as a plain console app, so
+    it works even on a locked-down network with no package restore.
+
+    Run it from this folder:   dotnet run -c Release
+    (or double-click run-tests.bat on Windows)
+    Exit code 0 = all tests passed, 1 = at least one failed.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>LicenseTests</AssemblyName>
+    <RootNamespace>WhateverITPCCare.Tests</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The code under test, linked from the app source (single source of truth). -->
+    <Compile Include="..\..\src\Services\LicenseCore.cs" Link="src\LicenseCore.cs" />
+    <Compile Include="..\..\src\Services\LicenseManager.cs" Link="src\LicenseManager.cs" />
+    <Compile Include="..\..\src\Models\RepairAction.cs" Link="src\RepairAction.cs" />
+    <!-- The test itself. -->
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+
+</Project>

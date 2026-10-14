@@ -229,8 +229,9 @@
             </TabItem>
 
             <!-- The Rig (Armoury-Crate style dashboard, Whatever IT theme) -->
-            <TabItem Header="The Rig">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <TabItem x:Name="RigTab" Header="The Rig">
+                <Grid>
+                <ScrollViewer x:Name="RigContent" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <!-- Hero: wolf mascot + title + live mode chip -->
                         <Border Style="{StaticResource Card}">
@@ -302,17 +303,18 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- Big CPU temperature dial -->
+                                    <!-- Big CPU temperature dial - blue-to-red circuit art behind a live readout -->
                                     <Grid Grid.Column="0" Width="196" Height="196" Margin="0,0,22,0">
-                                        <Ellipse Stroke="{StaticResource Card2Brush}" StrokeThickness="12" Fill="{StaticResource BgBrush}"/>
-                                        <Ellipse x:Name="RigCpuRing" Stroke="{StaticResource AccentBrush}" StrokeThickness="8"
-                                                 Width="176" Height="176"/>
+                                        <Image Source="/Assets/cpu-dial.png" Stretch="Uniform"/>
+                                        <Ellipse x:Name="RigCpuRing" Stroke="{StaticResource AccentBrush}" StrokeThickness="5"
+                                                 Width="150" Height="150"/>
+                                        <Ellipse Width="108" Height="108" Fill="{StaticResource BgBrush}" Opacity="0.80"/>
                                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                            <TextBlock Text="CPU TEMP" FontSize="11" FontWeight="SemiBold"
+                                            <TextBlock Text="CPU TEMP" FontSize="10" FontWeight="SemiBold"
                                                        Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
-                                            <TextBlock x:Name="RigCpuTempText" Text="—" FontSize="42" FontWeight="Bold"
-                                                       HorizontalAlignment="Center"/>
-                                            <TextBlock x:Name="RigCpuClockText" Text="— GHz" FontSize="13"
+                                            <TextBlock x:Name="RigCpuTempText" Text="—" FontSize="38" FontWeight="Bold"
+                                                       Foreground="White" HorizontalAlignment="Center"/>
+                                            <TextBlock x:Name="RigCpuClockText" Text="— GHz" FontSize="12"
                                                        Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center"/>
                                         </StackPanel>
                                     </Grid>
@@ -483,6 +485,26 @@
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
+
+                <!-- Pro-only lock. Shown over The Rig when the user is not on the
+                     Pro plan; hidden the moment they upgrade. -->
+                <Border x:Name="RigLockOverlay" Visibility="Collapsed"
+                        Background="{StaticResource BgBrush}">
+                    <Border Style="{StaticResource Card}" MaxWidth="460" Padding="34"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="🔒" FontSize="40" HorizontalAlignment="Center"/>
+                            <TextBlock Text="The Rig is a Pro feature" FontSize="20" FontWeight="Bold"
+                                       Foreground="White" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                            <TextBlock TextWrapping="Wrap" TextAlignment="Center" FontSize="13"
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"
+                                       Text="Live CPU / GPU temperature, clocks, fan speeds, power &amp; fan modes and the gaming dashboard are included with Whatever IT PC Care Pro. Upgrade to unlock The Rig."/>
+                            <Button Content="Upgrade to Pro" Click="OnGetPro" Style="{StaticResource PrimaryButton}"
+                                    HorizontalAlignment="Center" Margin="0,18,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Border>
+                </Grid>
             </TabItem>
 
             <!-- Plan & Billing -->

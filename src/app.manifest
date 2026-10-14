@@ -2,13 +2,14 @@
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <assemblyIdentity version="1.0.0.0" name="WhateverITPCCare.app"/>
 
-  <!-- Run as the normal (invoker) user. Individual repair actions that need
-       Administrator rights are elevated on-demand via the Windows UAC prompt,
-       so the whole app does not have to run elevated. -->
+  <!-- Always run elevated. The Rig's live CPU temperature / clock / voltage
+       sensors talk to the hardware through a low-level driver that only works
+       with Administrator rights, so the app requests elevation up-front (one
+       UAC prompt at launch) instead of failing to read the CPU. -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
-        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

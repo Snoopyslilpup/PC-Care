@@ -67,9 +67,41 @@ public sealed class RigMonitor
     {
         var snap = new RigSnapshot();
         ReadSensors(snap);
+        // If the low-level driver did not expose a CPU temperature (some
+        // chipsets, or a sensor that only the chipset's own tool reads), fall
+        // back to the Windows ACPI thermal zone so the dial still shows a value.
+        if (snap.CpuTempC == null)
+        {
+            double? acpi = ReadAcpiThermalZoneC();
+            if (acpi != null) snap.CpuTempC = Math.Round(acpi.Value, 1);
+        }
         ReadMemory(snap);
         ReadStorage(snap);
         return snap;
+    }
+
+    /// <summary>
+    /// Reads the Windows ACPI thermal zone (root\WMI). Widely available even
+    /// when the low-level CPU driver cannot. Returns null when the PC does not
+    /// publish it. Value is in Celsius.
+    /// </summary>
+    private static double? ReadAcpiThermalZoneC()
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                @"root\WMI", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
+            double? hottest = null;
+            foreach (ManagementObject mo in searcher.Get())
+            {
+                double tenthKelvin = Convert.ToDouble(mo["CurrentTemperature"]);
+                double c = tenthKelvin / 10.0 - 273.15;
+                if (c > 0 && c < 150 && (hottest == null || c > hottest))
+                    hottest = c;
+            }
+            return hottest;
+        }
+        catch { return null; }
     }
 
     private void ReadSensors(RigSnapshot snap)

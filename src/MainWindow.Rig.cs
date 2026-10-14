@@ -37,10 +37,42 @@ public partial class MainWindow
 
         _rigTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
         _rigTimer.Tick += (_, _) => RigTick();
-        _rigTimer.Start();
-        RigTick();                 // paint once immediately
 
-        _ = ScanGamesAsync();      // find Steam games in the background
+        // The Rig is a Pro-only dashboard. Only start the live monitoring /
+        // game scan when the user is actually on Pro; otherwise show the lock.
+        ApplyRigAccess();
+    }
+
+    /// <summary>
+    /// Shows the live dashboard for Pro users and the "upgrade" lock for
+    /// everyone else. Safe to call before InitRig has created the timer and
+    /// again whenever the licence changes (e.g. right after an upgrade), so the
+    /// gate flips the instant the user becomes Pro.
+    /// </summary>
+    internal void ApplyRigAccess()
+    {
+        bool pro = _license.Current.IsPro;
+
+        if (RigLockOverlay != null)
+            RigLockOverlay.Visibility = pro ? Visibility.Collapsed : Visibility.Visible;
+        if (RigContent != null)
+            RigContent.Visibility = pro ? Visibility.Visible : Visibility.Collapsed;
+
+        if (pro)
+        {
+            // Start monitoring the first time a Pro user reaches the tab.
+            if (_rigTimer != null && !_rigTimer.IsEnabled)
+            {
+                _rigTimer.Start();
+                RigTick();            // paint once immediately
+                _ = ScanGamesAsync(); // find Steam games in the background
+            }
+        }
+        else
+        {
+            // Not Pro: make sure nothing keeps running behind the lock.
+            _rigTimer?.Stop();
+        }
     }
 
     // ===== live monitoring =====

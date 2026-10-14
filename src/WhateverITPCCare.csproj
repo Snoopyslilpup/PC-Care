@@ -47,6 +47,8 @@
     <Resource Include="Assets\wolf-logo.png" />
     <!-- Mascot shown on "The Rig" dashboard hero card. -->
     <Resource Include="Assets\rig-wolf.jpg" />
+    <!-- Blue-to-red circuit dial art behind the live CPU temperature readout. -->
+    <Resource Include="Assets\cpu-dial.png" />
   </ItemGroup>
 
 </Project>

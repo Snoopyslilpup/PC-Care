@@ -242,6 +242,7 @@ public partial class MainWindow : Window
         ProActionButton.Content = c.IsPro ? "Renew Pro" : "Get Pro";
 
         UpdateScanAvailability();
+        ApplyRigAccess();   // flip The Rig lock on/off to match the current plan
     }
 
     /// <summary>

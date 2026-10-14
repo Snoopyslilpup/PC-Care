@@ -201,6 +201,32 @@ public partial class CompanionWindow : Window
         if (_cfg.Enabled && !IsVisible) Show();
     }
 
+    /// <summary>Explicit "Wake the wolf": make the companion visible and park him
+    /// at a known on-screen spot (bottom-left of the primary work area) so he
+    /// can never end up invisible or stranded off-screen.</summary>
+    public void WakeOnScreen()
+    {
+        try
+        {
+            if (!IsVisible) Show();
+            Visibility = Visibility.Visible;
+            Opacity = 1.0;
+
+            var wa = SystemParameters.WorkArea;
+            Left = wa.Left + 60;
+            Top = Math.Max(wa.Top, wa.Bottom - Height);
+
+            StopPoses();
+            _behaviour = Behaviour.Idle;
+            _facing = 1;
+            UpdateFacing();
+            Bob.Y = 0; Tilt.Angle = 0;
+
+            Topmost = false; Topmost = _cfg.AlwaysOnTop;
+        }
+        catch { }
+    }
+
     // ===================== behaviour brain =====================
     private void BrainTick()
     {

@@ -43,20 +43,20 @@
             </Grid.Effect>
 
             <!-- limbs first (behind the body) -->
-            <Image x:Name="LegL" Stretch="Uniform" Width="120">
+            <Image x:Name="LegL" Stretch="Uniform" Width="120" HorizontalAlignment="Center" VerticalAlignment="Bottom">
                 <Image.RenderTransform><RotateTransform x:Name="LegLRot" Angle="0"/></Image.RenderTransform>
             </Image>
-            <Image x:Name="LegR" Stretch="Uniform" Width="120">
+            <Image x:Name="LegR" Stretch="Uniform" Width="120" HorizontalAlignment="Center" VerticalAlignment="Bottom">
                 <Image.RenderTransform><RotateTransform x:Name="LegRRot" Angle="0"/></Image.RenderTransform>
             </Image>
-            <Image x:Name="ArmL" Stretch="Uniform" Width="120">
+            <Image x:Name="ArmL" Stretch="Uniform" Width="120" HorizontalAlignment="Center" VerticalAlignment="Bottom">
                 <Image.RenderTransform><RotateTransform x:Name="ArmLRot" Angle="0"/></Image.RenderTransform>
             </Image>
-            <Image x:Name="ArmR" Stretch="Uniform" Width="120">
+            <Image x:Name="ArmR" Stretch="Uniform" Width="120" HorizontalAlignment="Center" VerticalAlignment="Bottom">
                 <Image.RenderTransform><RotateTransform x:Name="ArmRRot" Angle="0"/></Image.RenderTransform>
             </Image>
             <!-- body drawn on top to cover the limb joints -->
-            <Image x:Name="BodyImg" Stretch="Uniform" Width="120"/>
+            <Image x:Name="BodyImg" Stretch="Uniform" Width="120" HorizontalAlignment="Center" VerticalAlignment="Bottom"/>
 
             <!-- "Zzz" shown while sleeping (sleep indicator, not a speech bubble) -->
             <TextBlock x:Name="SleepZ" Text="z z Z" Foreground="#FF9FF6FF" FontSize="18"

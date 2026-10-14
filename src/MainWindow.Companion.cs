@@ -16,8 +16,9 @@ public partial class MainWindow
     private CompanionWindow? _companion;
     private CompanionPanel? _companionPanel;
 
-    /// <summary>Called from the constructor. Starts the wolf automatically when
-    /// the saved settings say he should be shown.</summary>
+    /// <summary>Called from the constructor. The wolf no longer starts on its
+    /// own: he only appears when the user clicks "Wake the wolf". Here we just
+    /// make sure he is dismissed cleanly when the app closes.</summary>
     private void InitCompanion()
     {
         // Make sure the wolf is dismissed cleanly when the app closes.
@@ -35,13 +36,8 @@ public partial class MainWindow
             }
             catch { }
         };
-
-        try
-        {
-            var cfg = CompanionConfig.Load();
-            if (cfg.Enabled) LaunchCompanion();
-        }
-        catch { /* never let the companion stop the main app from opening */ }
+        // NOTE: deliberately NOT auto-launching here. The companion must only
+        // appear on an explicit "Wake the wolf" click, never on startup.
     }
 
     /// <summary>Create the single companion instance (or reuse the existing one)
@@ -63,11 +59,27 @@ public partial class MainWindow
         return _companion;
     }
 
-    /// <summary>Hero-card button / wolf click: send the wolf out onto the desktop.</summary>
+    /// <summary>Hero-card button / wolf click: send the wolf out onto the desktop.
+    /// This is the ONLY way the companion starts. We persist Enabled=true so a
+    /// panel reload won't immediately hide him, then force him visible at a
+    /// known on-screen spot.</summary>
     private void OnWakeWolf(object sender, RoutedEventArgs e)
     {
+        try
+        {
+            var cfg = CompanionConfig.Load();
+            if (!cfg.Enabled) { cfg.Enabled = true; cfg.Save(); }
+        }
+        catch { }
+
         var wolf = LaunchCompanion();
-        try { wolf.Activate(); } catch { }
+        try
+        {
+            wolf.ReloadConfig();   // pick up Enabled=true so it is not hidden
+            wolf.WakeOnScreen();   // show + park somewhere visible
+            wolf.Activate();
+        }
+        catch { }
     }
 
     /// <summary>Hero-card button / companion menu: open the wolf's control panel.</summary>

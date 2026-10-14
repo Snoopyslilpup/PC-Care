@@ -74,6 +74,7 @@
     <!-- Frame-by-frame sprite sheets (pre-baked poses) for natural motion. -->
     <Resource Include="Assets\sprites\male\*.png" />
     <Resource Include="Assets\sprites\female\*.png" />
+    <Resource Include="Assets\sprites\contact-shadow.png" />
   </ItemGroup>
 
   <ItemGroup>

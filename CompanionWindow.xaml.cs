@@ -206,6 +206,20 @@ public partial class CompanionWindow : Window
             _currentClip = "idle";
             _frameIndex = 0;
             ShowFrame();
+
+            // Soft contact shadow under the feet (shared asset)
+            try
+            {
+                var uri = new Uri("pack://application:,,,/Assets/sprites/contact-shadow.png", UriKind.Absolute);
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.UriSource = uri;
+                bmp.EndInit();
+                bmp.Freeze();
+                ContactShadow.Source = bmp;
+            }
+            catch { ContactShadow.Source = null; }
         }
         catch
         {
@@ -358,7 +372,10 @@ public partial class CompanionWindow : Window
             _behaviour = Behaviour.Idle;
             _facing = 1;
             UpdateFacing();
-            Bob.Y = 0; Tilt.Angle = 0;
+            Bob.Y = 0; Tilt.Angle = 0; PerspSkew.AngleX = 0;
+            ShadowScale.ScaleX = 1; ShadowScale.ScaleY = 1;
+            ContactShadow.Opacity = 0.55;
+            SyncClipToBehaviour();
 
             Topmost = false; Topmost = _cfg.AlwaysOnTop;
         }
@@ -589,6 +606,9 @@ public partial class CompanionWindow : Window
                 Left = _targetX;
                 if (_hasTargetY) Top = _targetY;
                 Bob.Y = 0; Tilt.Angle = 0;
+                PerspSkew.AngleX = 0;
+                ShadowScale.ScaleX = 1.0; ShadowScale.ScaleY = 1.0;
+                ContactShadow.Opacity = 0.55;
                 ArriveFromWalk();
             }
             else
@@ -600,15 +620,32 @@ public partial class CompanionWindow : Window
                 _facing = stepX >= 0 ? 1 : -1;
                 UpdateFacing();
 
-                // little hop + tilt so the walk reads as a walk
+                // hop + tilt + subtle perspective foreshortening
                 _bobPhase += 0.35;
-                Bob.Y = -Math.Abs(Math.Sin(_bobPhase)) * 4;
-                Tilt.Angle = Math.Sin(_bobPhase) * 2.5;
+                double s = Math.Sin(_bobPhase);
+                double hop = Math.Abs(s);
+                Bob.Y = -hop * 5.0;
+                Tilt.Angle = s * 2.8;
+                // slight lean into the direction of travel (3D read)
+                PerspSkew.AngleX = s * 1.6 * _facing;
+                // contact shadow squashes on landing, stretches mid-air
+                ShadowScale.ScaleX = 1.0 + hop * 0.18;
+                ShadowScale.ScaleY = 1.0 - hop * 0.35;
+                ContactShadow.Opacity = 0.55 - hop * 0.22;
+            }
+        }
+        else
+        {
+            // idle: gentle shadow breathing
+            if (Math.Abs(PerspSkew.AngleX) > 0.01) PerspSkew.AngleX *= 0.85;
+            if (Math.Abs(ShadowScale.ScaleX - 1.0) > 0.01)
+            {
+                ShadowScale.ScaleX += (1.0 - ShadowScale.ScaleX) * 0.15;
+                ShadowScale.ScaleY += (1.0 - ShadowScale.ScaleY) * 0.15;
+                ContactShadow.Opacity += (0.55 - ContactShadow.Opacity) * 0.15;
             }
         }
 
-        // Frame-by-frame clip is driven by AnimTick; just keep the clip
-        // in sync with the current behaviour (walk vs idle etc.).
         SyncClipToBehaviour();
     }
 
@@ -648,19 +685,23 @@ public partial class CompanionWindow : Window
     private void SetMood(WolfMood mood)
     {
         _mood = mood;
-        (Color c, double op) = mood switch
+        // Rim glow + mood-light centre colour for a 3D light read
+        (Color rim, Color light, double rimOp, double lightOp) = mood switch
         {
-            WolfMood.Happy   => (Color.FromRgb(0x34, 0xC7, 0x59), 0.28),
-            WolfMood.Proud   => (Color.FromRgb(0xE8, 0x90, 0x2B), 0.45),
-            WolfMood.Sleepy  => (Color.FromRgb(0x2B, 0xD4, 0xD9), 0.22),
-            WolfMood.Annoyed => (Color.FromRgb(0xE8, 0x90, 0x2B), 0.40),
-            WolfMood.Worried => (Color.FromRgb(0xFF, 0xB0, 0x20), 0.60),
-            WolfMood.Angry   => (Color.FromRgb(0xFF, 0x4D, 0x4F), 0.85),
-            _                => (Color.FromRgb(0xE8, 0x90, 0x2B), 0.30),
+            WolfMood.Happy   => (Color.FromRgb(0xA8, 0xF0, 0xB0), Color.FromArgb(0x70, 0xC0, 0xFF, 0xD0), 0.40, 0.28),
+            WolfMood.Proud   => (Color.FromRgb(0xF0, 0xC0, 0x70), Color.FromArgb(0x80, 0xFF, 0xE0, 0xA0), 0.50, 0.32),
+            WolfMood.Sleepy  => (Color.FromRgb(0x90, 0xE0, 0xF0), Color.FromArgb(0x55, 0xA0, 0xE8, 0xFF), 0.30, 0.18),
+            WolfMood.Annoyed => (Color.FromRgb(0xF0, 0xB0, 0x50), Color.FromArgb(0x70, 0xFF, 0xC0, 0x70), 0.45, 0.26),
+            WolfMood.Worried => (Color.FromRgb(0xFF, 0xC0, 0x40), Color.FromArgb(0x90, 0xFF, 0xD0, 0x60), 0.60, 0.35),
+            WolfMood.Angry   => (Color.FromRgb(0xFF, 0x70, 0x60), Color.FromArgb(0xA0, 0xFF, 0x90, 0x70), 0.75, 0.42),
+            _                => (Color.FromRgb(0xE8, 0xC0, 0x90), Color.FromArgb(0x60, 0xFF, 0xE8, 0xC0), 0.35, 0.22),
         };
-        MoodGlow.Color = c;
-        var fade = new DoubleAnimation(op, TimeSpan.FromMilliseconds(300));
-        MoodGlow.BeginAnimation(DropShadowEffect.OpacityProperty, fade);
+        RimGlow.Color = rim;
+        RimGlow.BeginAnimation(DropShadowEffect.OpacityProperty,
+            new DoubleAnimation(rimOp, TimeSpan.FromMilliseconds(280)));
+        MoodLightCenter.Color = light;
+        MoodLight.BeginAnimation(UIElement.OpacityProperty,
+            new DoubleAnimation(lightOp, TimeSpan.FromMilliseconds(280)));
     }
 
     // ===================== voice =====================

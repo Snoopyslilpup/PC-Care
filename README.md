@@ -105,9 +105,7 @@ hot.
   switch character, mute, hide, close). The main window’s hero card is the
   **“Wake the wolf”** launcher.
 
-**Animation:** the companion uses **frame-by-frame sprite sheets** (idle, 8-frame
-walk cycle, talk, sit, look, yawn, scratch, sleep) so motion is baked and
-natural instead of rotating flat limb cutouts. Sheets live in
+**Animation (Option C – 3D-style):** frame-by-frame sprite sheets (idle, 8-frame walk, talk, sit, look, yawn, scratch, sleep) with baked ambient occlusion, directional key + rim lighting, soft contact shadow under the feet, dynamic mood light overlay, and subtle perspective foreshortening while walking. Sheets live in
 `src/Assets/sprites/male\` and `src/Assets/sprites/female\`. Full-body stills
 remain in `src/Assets/wolf-male.png` / `wolf-female.png` as fallbacks. Voice
 clips are in `src/Assets/voices/male\` and `src/Assets/voices/female\` — drop in

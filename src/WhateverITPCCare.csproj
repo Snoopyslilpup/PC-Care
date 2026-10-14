@@ -42,6 +42,8 @@
     </None>
     <!-- Brand wolf logo, embedded so it renders in the app UI. -->
     <Resource Include="Assets\wolf-logo.png" />
+    <!-- Mascot shown on "The Rig" dashboard hero card. -->
+    <Resource Include="Assets\rig-wolf.jpg" />
   </ItemGroup>
 
 </Project>

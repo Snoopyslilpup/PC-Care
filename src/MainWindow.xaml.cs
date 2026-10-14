@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         _license.Load();
         RefreshLicenseUi();
         VersionLine.Text = "Whatever IT PC Care v1.0  •  © Whatever IT";
+        InitRig();
     }
 
     private void LoadHeader()

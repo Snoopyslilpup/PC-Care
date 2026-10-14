@@ -1,0 +1,88 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>WhateverITPCCare</RootNamespace>
+    <AssemblyName>WhateverITPCCare</AssemblyName>
+    <Version>1.0.0</Version>
+    <Company>Whatever IT</Company>
+    <Product>Whatever IT PC Care</Product>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <!-- Self-contained single-file publish so customers need NO .NET install -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Bumped to 10.0.2 to satisfy LibreHardwareMonitorLib's requirement
+         (it needs System.Management >= 10.0.2). Avoids NU1605 downgrade error. -->
+    <PackageReference Include="System.Management" Version="10.0.2" />
+    <!-- Built-in hardware sensor reader: reads CPU / motherboard / GPU
+         temperatures and fan speeds directly from the hardware, so temperature
+         monitoring works WITHOUT installing any third-party tool. It loads a
+         small signed sensor driver, which needs the app to run as
+         administrator. Pinned to 0.9.6 so its System.Management dependency
+         (>= 10.0.2) matches ours exactly and restore stays deterministic. -->
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <!-- Embedded in-app payment page (SimplyBlu checkout). Uses the Evergreen
+         WebView2 runtime that ships with Windows 10/11. Floating 1.0.* so the
+         restore always resolves a valid published build. -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
+    <!-- Offline text-to-speech (Windows SAPI) for the wolf desktop companion's
+         voice. Windows-only, which matches our net8.0-windows target; if no
+         speech voice is installed the companion simply falls back to text. -->
+    <PackageReference Include="System.Speech" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Assets\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Brand wolf logo, embedded so it renders in the app UI. -->
+    <Resource Include="Assets\wolf-logo.png" />
+    <!-- Mascot shown on "The Rig" dashboard hero card. -->
+    <Resource Include="Assets\rig-wolf.jpg" />
+    <!-- New branded wolf mascot (PC Care+) - hero mascot. -->
+    <Resource Include="Assets\wolf-mascot.png" />
+    <!-- Blue-to-red circuit dial art behind the live CPU temperature readout. -->
+    <Resource Include="Assets\cpu-dial.png" />
+    <!-- Transparent full-body sprite for the walking / talking wolf desktop companion. -->
+    <Resource Include="Assets\wolf-companion.png" />
+    <!-- Selectable companion characters (transparent full-body sprites). -->
+    <Resource Include="Assets\wolf-male.png" />
+    <Resource Include="Assets\wolf-female.png" />
+    <!-- Legacy cutout parts kept for reference / future art pipeline. -->
+    <Resource Include="Assets\parts\male\leg-l.png" />
+    <Resource Include="Assets\parts\male\leg-r.png" />
+    <Resource Include="Assets\parts\male\arm-l.png" />
+    <Resource Include="Assets\parts\male\arm-r.png" />
+    <Resource Include="Assets\parts\male\body.png" />
+    <Resource Include="Assets\parts\female\leg-l.png" />
+    <Resource Include="Assets\parts\female\leg-r.png" />
+    <Resource Include="Assets\parts\female\arm-l.png" />
+    <Resource Include="Assets\parts\female\arm-r.png" />
+    <Resource Include="Assets\parts\female\body.png" />
+    <!-- Frame-by-frame sprite sheets (pre-baked poses) for natural motion. -->
+    <Resource Include="Assets\sprites\male\*.png" />
+    <Resource Include="Assets\sprites\female\*.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Recorded companion voice clips, one folder per character. Shipped as
+         plain files beside the app (copied on build) so the media player can
+         open them directly; the matching set is chosen at runtime. -->
+    <Content Include="Assets\voices\**\*.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

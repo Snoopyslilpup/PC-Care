@@ -37,6 +37,10 @@
          WebView2 runtime that ships with Windows 10/11. Floating 1.0.* so the
          restore always resolves a valid published build. -->
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
+    <!-- Offline text-to-speech (Windows SAPI) for the wolf desktop companion's
+         voice. Windows-only, which matches our net8.0-windows target; if no
+         speech voice is installed the companion simply falls back to text. -->
+    <PackageReference Include="System.Speech" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -47,8 +51,24 @@
     <Resource Include="Assets\wolf-logo.png" />
     <!-- Mascot shown on "The Rig" dashboard hero card. -->
     <Resource Include="Assets\rig-wolf.jpg" />
+    <!-- New branded wolf mascot (PC Care+) - hero mascot. -->
+    <Resource Include="Assets\wolf-mascot.png" />
     <!-- Blue-to-red circuit dial art behind the live CPU temperature readout. -->
     <Resource Include="Assets\cpu-dial.png" />
+    <!-- Transparent full-body sprite for the walking / talking wolf desktop companion. -->
+    <Resource Include="Assets\wolf-companion.png" />
+    <!-- Selectable companion characters (transparent full-body sprites). -->
+    <Resource Include="Assets\wolf-male.png" />
+    <Resource Include="Assets\wolf-female.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Recorded companion voice clips, one folder per character. Shipped as
+         plain files beside the app (copied on build) so the media player can
+         open them directly; the matching set is chosen at runtime. -->
+    <Content Include="Assets\voices\**\*.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

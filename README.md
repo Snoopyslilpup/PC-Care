@@ -74,6 +74,44 @@ Anything riskier than this is intentionally left to a technician, with a
 
 ---
 
+## Desktop wolf companion
+
+A walking, talking wolf technician who lives on the desktop. He roams the whole
+screen, reacts when you click him, naps and plays when you’re idle, quietens
+down automatically while a game is running, and — the serious part — keeps an
+eye on your CPU and GPU temperatures and speaks up (honestly) when the PC runs
+hot.
+
+* **Choose your companion — male or female.** Two fully-drawn characters, each
+  with its **own recorded voice** (professionally voiced clips for greetings,
+  cheeky click lines, overheating warnings, “all good” lines and the farewell).
+  Pick one when you first meet him and **switch any time later** — either from
+  the control panel (Companion ▸ Male/Female wolf) or straight from the wolf’s
+  right-click menu (“Switch to the male/female wolf”). The artwork and the
+  voice change together instantly.
+* **Real recorded voices, with a safety net.** The chosen character’s recorded
+  clips are used whenever one fits the moment; if a clip is ever missing the
+  companion falls back to the built-in Windows speech voice so he’s never mute.
+  Prefer silence? Set the voice to **Silent** and he’ll only show text bubbles.
+* **Per-hardware temperature thresholds.** Warn/critical limits are seeded to
+  suit the detected CPU and GPU (a laptop chip, a Ryzen desktop and an RTX card
+  all get sensible, different limits) and every value is editable.
+* **Honest cooling.** When it gets hot the wolf warns you and, if you allow it,
+  asks Windows to use a cooler power plan. It will **never pretend to spin a fan
+  it cannot reach** — fan behaviour on this machine is described plainly in the
+  control panel.
+* **Controls.** Double-click the wolf for his control panel; drag him anywhere;
+  right-click for quick actions (open panel, run diagnostics, check now, resize,
+  switch character, mute, hide, close). The main window’s hero card is the
+  **“Wake the wolf”** launcher.
+
+The two character sprites live in `src/Assets/wolf-male.png` and
+`wolf-female.png`, and their voice clips in
+`src/Assets/voices/male\` and `src/Assets/voices/female\` — drop in replacement
+MP3s with the same names to re-voice a character.
+
+---
+
 ## Two revenue streams (built in, pay in-app)
 
 * **Basic — R65 / month.** Unlocks the one-click safe repairs.

@@ -1,0 +1,119 @@
+<Window x:Class="WhateverITPCCare.CompanionPanel"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Wolf Companion" Height="680" Width="520"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BgBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI" ResizeMode="CanResize" MinWidth="460" MinHeight="520">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <Image Source="/Assets/wolf-companion.png" Width="44" Height="62" Stretch="Uniform" Margin="0,0,12,0"/>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Wolf Companion" FontSize="20" FontWeight="Bold"/>
+                <TextBlock Text="Your desktop IT technician. With attitude." FontSize="12.5"
+                           FontStyle="Italic" Foreground="{StaticResource AccentBrush}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- character -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Companion" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Choose which wolf keeps you company. Each one has its own look and its own recorded voice &#8212; you can switch any time."
+                                   TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8"/>
+                        <ComboBox x:Name="CharacterCombo" Width="260" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="Male wolf"/>
+                            <ComboBoxItem Content="Female wolf"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- behaviour -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Behaviour" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <CheckBox x:Name="EnabledCheck" Content="Show the wolf on my desktop" Foreground="{StaticResource TextBrush}" Margin="0,4"/>
+                        <CheckBox x:Name="TopCheck" Content="Keep him on top of other windows" Foreground="{StaticResource TextBrush}" Margin="0,4"/>
+                        <CheckBox x:Name="RoamCheck" Content="Let him walk all over the screen" Foreground="{StaticResource TextBrush}" Margin="0,4"/>
+                        <CheckBox x:Name="PlayCheck" Content="Let him play with the desktop when bored" Foreground="{StaticResource TextBrush}" Margin="0,4"/>
+                        <TextBlock Text="Size" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,2"/>
+                        <Slider x:Name="ScaleSlider" Minimum="0.6" Maximum="1.8" TickFrequency="0.1"
+                                IsSnapToTickEnabled="True" Width="240" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- voice -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Voice" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <ComboBox x:Name="VoiceCombo" Width="260" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="Silent (text bubbles only)"/>
+                            <ComboBoxItem Content="Funny wolf"/>
+                            <ComboBoxItem Content="Serious technician"/>
+                        </ComboBox>
+                        <CheckBox x:Name="WarnCheck" Content="Speak overheating warnings" Foreground="{StaticResource TextBrush}" Margin="0,10,0,4"/>
+                        <CheckBox x:Name="ChitCheck" Content="Tell jokes and random remarks" Foreground="{StaticResource TextBrush}" Margin="0,4"/>
+                        <TextBlock x:Name="VoiceAvailNote" FontSize="11.5" Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- temperature thresholds -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Temperature thresholds (&#176;C)" FontSize="15" FontWeight="Bold"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,10"
+                                   Text="These are tuned to your CPU and GPU, not a one-size-fits-all limit. Adjust them if you know your hardware runs hotter or cooler."/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Warn" Width="80" TextAlignment="Center" Foreground="{StaticResource WarnBrush}"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Critical" Width="80" TextAlignment="Center" Foreground="{StaticResource BadBrush}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="CPU" VerticalAlignment="Center" Width="60"/>
+                            <TextBox x:Name="CpuWarnBox" Grid.Row="1" Grid.Column="1" Width="70" Margin="5" Padding="6" Background="{StaticResource Card2Brush}" Foreground="{StaticResource TextBrush}" BorderThickness="0"/>
+                            <TextBox x:Name="CpuCritBox" Grid.Row="1" Grid.Column="2" Width="70" Margin="5" Padding="6" Background="{StaticResource Card2Brush}" Foreground="{StaticResource TextBrush}" BorderThickness="0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="GPU" VerticalAlignment="Center" Width="60"/>
+                            <TextBox x:Name="GpuWarnBox" Grid.Row="2" Grid.Column="1" Width="70" Margin="5" Padding="6" Background="{StaticResource Card2Brush}" Foreground="{StaticResource TextBrush}" BorderThickness="0"/>
+                            <TextBox x:Name="GpuCritBox" Grid.Row="2" Grid.Column="2" Width="70" Margin="5" Padding="6" Background="{StaticResource Card2Brush}" Foreground="{StaticResource TextBrush}" BorderThickness="0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- cooling + gaming -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Cooling &amp; gaming" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <CheckBox x:Name="CoolingCheck" Content="Automatically raise cooling when the PC gets hot" Foreground="{StaticResource TextBrush}" Margin="0,4"/>
+                        <CheckBox x:Name="GamingCheck" Content="Quieten down automatically while a game is running" Foreground="{StaticResource TextBrush}" Margin="0,4"/>
+                        <TextBlock x:Name="FanStatusText" FontSize="11.5" Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- footer buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Check my PC now" Style="{StaticResource GhostButton}" Click="OnCheckNow" Margin="0,0,10,0"/>
+            <Button Content="Cancel" Style="{StaticResource GhostButton}" Click="OnCancel" Margin="0,0,10,0"/>
+            <Button Content="Save" Style="{StaticResource PrimaryButton}" Click="OnSave"/>
+        </StackPanel>
+    </Grid>
+</Window>

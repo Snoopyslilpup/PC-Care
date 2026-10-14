@@ -80,6 +80,11 @@ FinishedLabel=Setup has finished installing [name] on your computer. You can sta
 Source: "publish\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
 ; Ship the wolf logo icon so every shortcut can point at it explicitly.
 Source: "src\Assets\app.ico"; DestDir: "{app}"; Flags: ignoreversion
+; Recorded companion voice clips. These are loose files that sit beside the exe
+; (not embedded in the single-file build), one folder per character
+; (Assets\voices\male, Assets\voices\female), so the companion plays its real
+; recorded voice. Without this the wolf would silently fall back to text-to-speech.
+Source: "publish\Assets\voices\*"; DestDir: "{app}\Assets\voices"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\app.ico"

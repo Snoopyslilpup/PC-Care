@@ -233,7 +233,7 @@
                 <Grid>
                 <ScrollViewer x:Name="RigContent" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <!-- Hero: wolf mascot + title + live mode chip -->
+                        <!-- Hero: desktop wolf COMPANION launcher + title + live mode chip -->
                         <Border Style="{StaticResource Card}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -241,10 +241,21 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Background="{StaticResource BgBrush}" CornerRadius="12"
-                                        Width="132" Height="176" Margin="0,0,18,0" ClipToBounds="True">
-                                    <Image Source="/Assets/rig-wolf.jpg" Stretch="UniformToFill"
-                                           RenderTransformOrigin="0.5,0.9">
+                                <!-- Click the wolf to send him out onto your desktop -->
+                                <Button Grid.Column="0" x:Name="CompanionLaunchButton" Click="OnWakeWolf"
+                                        Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand"
+                                        ToolTip="Wake the wolf and send him onto your desktop"
+                                        Margin="0,0,18,0">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{StaticResource BgBrush}" CornerRadius="12"
+                                                    Width="132" Height="176" ClipToBounds="True">
+                                                <ContentPresenter/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <Image Source="/Assets/wolf-companion.png" Stretch="Uniform"
+                                           VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.9">
                                         <Image.RenderTransform>
                                             <ScaleTransform x:Name="RigWolfScale" ScaleX="1" ScaleY="1"/>
                                         </Image.RenderTransform>
@@ -254,20 +265,26 @@
                                             </EventTrigger>
                                         </Image.Triggers>
                                     </Image>
-                                </Border>
+                                </Button>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="THE" FontSize="26" FontWeight="Bold"/>
-                                        <TextBlock Text="RIG" FontSize="26" FontWeight="Bold"
+                                        <TextBlock Text="YOUR DESKTOP" FontSize="26" FontWeight="Bold"/>
+                                        <TextBlock Text="WOLF" FontSize="26" FontWeight="Bold"
                                                    Foreground="{StaticResource AccentBrush}" Margin="8,0,0,0"/>
                                     </StackPanel>
-                                    <TextBlock Text="Your command centre - live hardware, performance modes and your game hub, all in one place."
+                                    <TextBlock Text="A cheeky walking, talking wolf technician who roams your desktop, keeps an eye on your CPU and GPU temperatures and shouts when things get too hot. Click him &#8212; or the button below &#8212; to send him out, and double-click him any time for his control panel."
                                                TextWrapping="Wrap" FontSize="13" Foreground="{StaticResource MutedBrush}"
-                                               Margin="0,4,0,0" MaxWidth="420" HorizontalAlignment="Left"/>
+                                               Margin="0,4,0,10" MaxWidth="440" HorizontalAlignment="Left"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button x:Name="WakeWolfButton" Content="&#128058;  Wake the wolf" Click="OnWakeWolf"
+                                                Style="{StaticResource PrimaryButton}" Padding="16,8"/>
+                                        <Button x:Name="WolfPanelButton" Content="Control panel" Click="OnOpenCompanionPanel"
+                                                Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,8"/>
+                                    </StackPanel>
                                     <TextBlock x:Name="RigAdminHint" TextWrapping="Wrap" FontSize="12"
                                                Foreground="{StaticResource WarnBrush}" Margin="0,8,0,0"
                                                Visibility="Collapsed"
-                                               Text="Tip: run Whatever IT PC Care as administrator to see live CPU and motherboard temperatures, clocks and fan speeds."/>
+                                               Text="Tip: run Whatever IT PC Care as administrator so the wolf can read live CPU and motherboard temperatures, clocks and fan speeds."/>
                                 </StackPanel>
                                 <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="8" Padding="12,8"
                                         Background="{StaticResource Card2Brush}">
@@ -303,12 +320,28 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- Big CPU temperature dial - blue-to-red circuit art behind a live readout -->
+                                    <!-- Big CPU temperature dial - custom blue-to-red scale with a live needle that moves with the temperature -->
                                     <Grid Grid.Column="0" Width="196" Height="196" Margin="0,0,22,0">
                                         <Image Source="/Assets/cpu-dial.png" Stretch="Uniform"/>
+                                        <!-- dim the centre so the readout stays legible -->
+                                        <Ellipse Width="108" Height="108" Fill="{StaticResource BgBrush}" Opacity="0.80"/>
+                                        <!-- temperature-coloured ring -->
                                         <Ellipse x:Name="RigCpuRing" Stroke="{StaticResource AccentBrush}" StrokeThickness="5"
                                                  Width="150" Height="150"/>
-                                        <Ellipse Width="108" Height="108" Fill="{StaticResource BgBrush}" Opacity="0.80"/>
+                                        <!-- live needle: rotates with CPU temperature (see MainWindow.Rig.cs) -->
+                                        <Canvas>
+                                            <Polygon x:Name="RigCpuNeedle" Points="98,27 101,90 98,102 95,90"
+                                                     Fill="{StaticResource AccentBrush}">
+                                                <Polygon.RenderTransform>
+                                                    <RotateTransform x:Name="RigCpuNeedleRotate" CenterX="98" CenterY="98" Angle="-120"/>
+                                                </Polygon.RenderTransform>
+                                            </Polygon>
+                                        </Canvas>
+                                        <!-- needle hub cap -->
+                                        <Ellipse Width="22" Height="22" Fill="{StaticResource AccentBrush}"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Ellipse Width="12" Height="12" Fill="{StaticResource BgBrush}"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                                             <TextBlock Text="CPU TEMP" FontSize="10" FontWeight="SemiBold"
                                                        Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>

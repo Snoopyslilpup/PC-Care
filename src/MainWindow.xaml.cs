@@ -44,6 +44,7 @@ public partial class MainWindow : Window
         RefreshLicenseUi();
         VersionLine.Text = "Whatever IT PC Care v1.0  •  © Whatever IT";
         InitRig();
+        InitCompanion();
     }
 
     private void LoadHeader()

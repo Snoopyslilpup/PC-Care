@@ -24,6 +24,12 @@
 
   <ItemGroup>
     <PackageReference Include="System.Management" Version="8.0.0" />
+    <!-- Built-in hardware sensor reader: reads CPU / motherboard / GPU
+         temperatures and fan speeds directly from the hardware, so temperature
+         monitoring works WITHOUT installing any third-party tool. It loads a
+         small signed sensor driver, which needs the app to run as
+         administrator. Floating 0.9.* so restore always resolves a valid build. -->
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.*" />
     <!-- Embedded in-app payment page (SimplyBlu checkout). Uses the Evergreen
          WebView2 runtime that ships with Windows 10/11. Floating 1.0.* so the
          restore always resolves a valid published build. -->

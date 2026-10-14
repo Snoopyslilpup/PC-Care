@@ -56,9 +56,14 @@ public partial class HealthScanner
         if (!r.HasTemperature)
         {
             yield return Info("Hardware", "Temperature & cooling",
-                "This PC's firmware does not share temperature sensors with Windows (common on " +
-                "desktops). Install a free hardware-monitor tool, or read the temperatures from the " +
-                "BIOS/UEFI screen, to turn on temperature tracking here.");
+                r.NeedsAdminHint
+                    ? "To turn on temperature monitoring, run Whatever IT PC Care as administrator " +
+                      "(right-click the app and choose \u201cRun as administrator\u201d). The built-in " +
+                      "sensor reader needs administrator rights to read the CPU and motherboard " +
+                      "temperatures. After that, temperatures appear here automatically."
+                    : "This PC's hardware doesn't expose temperature sensors that can be read, even " +
+                      "with the built-in sensor reader (common on some desktops and laptops). You can " +
+                      "still check temperatures on the BIOS/UEFI screen.");
             yield break;
         }
 

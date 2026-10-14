@@ -55,6 +55,16 @@ public partial class MainWindow : Window
     // ===== Scanning =====
     private async void OnScan(object sender, RoutedEventArgs e)
     {
+        // Free trial model: an unlicensed PC gets ONE scan to test the app. Once
+        // that is used up, scanning is locked and we send them to the plan screen.
+        if (!_license.Current.IsBasicOrBetter && _license.TrialUsed)
+        {
+            UpdateScanAvailability();
+            GoToSubscription("Your free trial scan has already been used on this PC. " +
+                "Subscribe to a plan to keep scanning and to use the one-click fixes.");
+            return;
+        }
+
         ScanButton.IsEnabled = false;
         ScanLabel.Text = "Scanning…";
         _results.Clear();
@@ -87,8 +97,19 @@ public partial class MainWindow : Window
         _wolfLoop?.Stop(this);
         ((Storyboard)FindResource("WolfHowl")).Begin(this);
 
-        ScanButton.IsEnabled = true;
-        ScanLabel.Text = "Scan again";
+        if (_license.Current.IsBasicOrBetter)
+        {
+            ScanButton.IsEnabled = true;
+            ScanLabel.Text = "Scan again";
+        }
+        else
+        {
+            // That was the single free trial scan - lock scanning until they subscribe.
+            _license.MarkTrialUsed();
+            ScanStatus.Text += "  •  This was your free trial scan. Subscribe on the Plan \u0026 Billing tab " +
+                "to scan again and to unlock the one-click fixes.";
+            UpdateScanAvailability();
+        }
     }
 
     private void UpdateScore(IReadOnlyList<HealthItem> items)
@@ -116,6 +137,16 @@ public partial class MainWindow : Window
     {
         var action = _repairs.Find(id);
         if (action == null) return;
+
+        // New trial model: the one-click fixes are a paid feature. An unlicensed
+        // user who clicks "Fix this" / "Run" is taken straight to the plan screen
+        // instead of running anything.
+        if (!_license.Current.IsBasicOrBetter)
+        {
+            GoToSubscription("The one-click fixes are part of a subscription. " +
+                "Choose a plan below to unlock them.");
+            return;
+        }
 
         if (action.ProOnly && !_license.Current.IsPro)
         {
@@ -208,6 +239,43 @@ public partial class MainWindow : Window
         bool basicActive = c.IsBasicOrBetter;
         BasicActionButton.Content = basicActive ? "Renew Basic" : "Get Basic";
         ProActionButton.Content = c.IsPro ? "Renew Pro" : "Get Pro";
+
+        UpdateScanAvailability();
+    }
+
+    /// <summary>
+    /// Enables or greys out the Scan button based on the plan + whether the one
+    /// free trial scan has been used. Licensed users scan without limit; everyone
+    /// else gets exactly one scan to test, after which the button greys out.
+    /// </summary>
+    private void UpdateScanAvailability()
+    {
+        bool licensed = _license.Current.IsBasicOrBetter;
+        bool canScan = licensed || !_license.TrialUsed;
+
+        ScanButton.IsEnabled = canScan;
+        ScanButton.Opacity = canScan ? 1.0 : 0.5;   // visibly greyed when locked
+
+        if (canScan)
+        {
+            ScanLabel.Text = _results.Count > 0 ? "Scan again" : "Scan PC";
+            ScanButton.ToolTip = licensed ? null : "You have one free trial scan to test the app.";
+        }
+        else
+        {
+            ScanLabel.Text = "Subscribe to scan";
+            ScanButton.ToolTip = "Your free trial scan has been used. Subscribe to keep scanning.";
+        }
+    }
+
+    /// <summary>Switch to the Plan & Billing tab and explain why.</summary>
+    private void GoToSubscription(string? reason = null)
+    {
+        try { MainTabs.SelectedItem = PlanTab; } catch { }
+        MessageBox.Show(
+            reason ?? "Subscribe to a plan to keep using Whatever IT PC Care \u2013 unlimited scans and " +
+            "the one-click fixes.",
+            "Subscribe to continue", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     // ===== Links =====

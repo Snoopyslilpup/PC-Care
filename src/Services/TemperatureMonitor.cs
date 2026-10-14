@@ -4,6 +4,8 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Management;
+using System.Security.Principal;
+using LibreHardwareMonitor.Hardware;
 
 namespace WhateverITPCCare.Services;
 
@@ -24,6 +26,11 @@ public sealed class TemperatureReading
     public TempTrend Trend { get; set; } = TempTrend.Unknown;
     public int? FanRpm { get; set; }
     public string? Source { get; set; }
+
+    /// <summary>True when we found no temperature AND the app is not running as
+    /// administrator - i.e. running elevated would most likely fix it. Lets the
+    /// UI show a helpful "run as administrator" hint instead of a dead end.</summary>
+    public bool NeedsAdminHint { get; set; }
 }
 
 /// <summary>
@@ -58,14 +65,24 @@ public sealed class TemperatureMonitor
     /// </summary>
     public TemperatureReading Sample(bool record = true)
     {
-        double? celsius = ReadHottestCelsius(out string? source);
-        int? fan = ReadFanRpm();
+        // 1) Preferred: our built-in sensor reader talks to the hardware directly
+        //    (CPU, motherboard, GPU) - no third-party tool required.
+        double? celsius = ReadBuiltInSensors(out string? source, out int? builtInFan);
+        int? fan = builtInFan;
+
+        // 2) Fallbacks: the standard Windows thermal sensor, then any external
+        //    hardware-monitor tool that happens to be running.
+        if (celsius == null) celsius = ReadHottestCelsius(out source);
+        if (fan == null) fan = ReadFanRpm();
 
         var result = new TemperatureReading { FanRpm = fan, Source = source };
 
         if (celsius == null)
         {
             result.HasTemperature = false;
+            // If we're not elevated, running as administrator will almost always
+            // unlock the readings, so tell the UI to say that.
+            result.NeedsAdminHint = !IsElevated();
             return result;
         }
 
@@ -83,6 +100,99 @@ public sealed class TemperatureMonitor
         result.AverageC = Math.Round(history.Average(h => h.c), 1);
         result.Trend = ComputeTrend(history);
         return result;
+    }
+
+    // ---- built-in sensor reader (LibreHardwareMonitor engine) ----
+    // Opened once and kept alive for the life of the app, the way a monitoring
+    // tool does. All access is locked so repeated scans are safe.
+    private Computer? _computer;
+    private readonly object _lock = new();
+
+    private sealed class UpdateVisitor : IVisitor
+    {
+        public void VisitComputer(IComputer computer) => computer.Traverse(this);
+        public void VisitHardware(IHardware hardware)
+        {
+            hardware.Update();
+            foreach (IHardware sub in hardware.SubHardware) sub.Accept(this);
+        }
+        public void VisitSensor(ISensor sensor) { }
+        public void VisitParameter(IParameter parameter) { }
+    }
+
+    private double? ReadBuiltInSensors(out string? source, out int? fan)
+    {
+        source = null;
+        fan = null;
+        try
+        {
+            lock (_lock)
+            {
+                if (_computer == null)
+                {
+                    var c = new Computer
+                    {
+                        IsCpuEnabled = true,
+                        IsGpuEnabled = true,
+                        IsMotherboardEnabled = true,
+                    };
+                    c.Open();            // loads the sensor driver (needs admin)
+                    _computer = c;
+                }
+
+                _computer.Accept(new UpdateVisitor());   // refresh all readings
+
+                double? hottest = null;
+                int bestFan = 0;
+                string? src = null;
+                foreach (IHardware hw in _computer.Hardware)
+                    CollectSensors(hw, ref hottest, ref bestFan, ref src);
+
+                source = src;
+                if (bestFan > 0) fan = bestFan;
+                return hottest;
+            }
+        }
+        catch
+        {
+            // Driver could not load (usually: not running as administrator) or
+            // the hardware is unsupported. Fall back to the other sources.
+            return null;
+        }
+    }
+
+    private static void CollectSensors(IHardware hw, ref double? hottest, ref int bestFan, ref string? source)
+    {
+        foreach (ISensor sensor in hw.Sensors)
+        {
+            if (!sensor.Value.HasValue) continue;
+            double v = sensor.Value.Value;
+            if (sensor.SensorType == SensorType.Temperature && v > 0 && v < 150)
+            {
+                if (hottest == null || v > hottest)
+                {
+                    hottest = v;
+                    source = "built-in sensor reader";
+                }
+            }
+            else if (sensor.SensorType == SensorType.Fan && v > 0)
+            {
+                int rpm = (int)Math.Round(v);
+                if (rpm > bestFan) bestFan = rpm;
+            }
+        }
+        foreach (IHardware sub in hw.SubHardware)
+            CollectSensors(sub, ref hottest, ref bestFan, ref source);
+    }
+
+    private static bool IsElevated()
+    {
+        try
+        {
+            using var id = WindowsIdentity.GetCurrent();
+            return new WindowsPrincipal(id).IsInRole(WindowsBuiltInRole.Administrator);
+        }
+        catch { return false; }
     }
 
     // ---- temperature sources ----

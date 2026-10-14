@@ -22,6 +22,27 @@ public class LicenseManager
     private readonly string _dir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WhateverITPCCare");
     private string File_ => Path.Combine(_dir, "license.dat");
+    private string TrialFile => Path.Combine(_dir, "trial.dat");
+
+    /// <summary>True once the single free trial scan has been used on this PC.</summary>
+    public bool TrialUsed
+    {
+        get { try { return File.Exists(TrialFile); } catch { return false; } }
+    }
+
+    /// <summary>Record that the one free trial scan has now been used, so the
+    /// app locks scanning until the customer subscribes. Persisted in AppData so
+    /// it survives closing/reopening the app.</summary>
+    public void MarkTrialUsed()
+    {
+        try
+        {
+            Directory.CreateDirectory(_dir);
+            if (!File.Exists(TrialFile))
+                File.WriteAllText(TrialFile, DateTime.Now.ToString("O"));
+        }
+        catch { /* best-effort */ }
+    }
 
     public LicenseInfo Current { get; private set; } = new();
 

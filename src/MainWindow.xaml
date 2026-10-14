@@ -131,7 +131,7 @@
         </Border>
 
         <!-- ===== Tabs ===== -->
-        <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" Padding="0,14,0,0">
+        <TabControl x:Name="MainTabs" Grid.Row="1" Background="Transparent" BorderThickness="0" Padding="0,14,0,0">
 
             <!-- Diagnostics -->
             <TabItem Header="Diagnostics">
@@ -221,7 +221,7 @@
             </TabItem>
 
             <!-- Plan & Billing -->
-            <TabItem Header="Plan &amp; Billing">
+            <TabItem x:Name="PlanTab" Header="Plan &amp; Billing">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel MaxWidth="640" HorizontalAlignment="Left">
                         <Border Style="{StaticResource Card}">

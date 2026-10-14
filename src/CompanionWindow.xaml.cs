@@ -42,6 +42,8 @@ public partial class CompanionWindow : Window
     private int _facing = 1;             // 1 = facing right, -1 = facing left
     private double _bobPhase;
     private double _scale = 1.0;         // base companion size multiplier
+    private bool _simpleMode;            // true when cutout parts failed to load
+                                         // and we fall back to one full sprite
     private double _legSwing;            // eased 0..1 walk-cycle limb amplitude
     private bool _busy;                  // true while a timed pose plays out
     private DateTime _nextDecision = DateTime.MinValue;
@@ -155,11 +157,30 @@ public partial class CompanionWindow : Window
             bool female = _cfg.Companion == CompanionGender.Female;
             string dir = female ? "female" : "male";
 
-            LegL.Source  = Part(dir, "leg-l");
-            LegR.Source  = Part(dir, "leg-r");
-            ArmL.Source  = Part(dir, "arm-l");
-            ArmR.Source  = Part(dir, "arm-r");
-            BodyImg.Source = Part(dir, "body");
+            var legL = Part(dir, "leg-l");
+            var legR = Part(dir, "leg-r");
+            var armL = Part(dir, "arm-l");
+            var armR = Part(dir, "arm-r");
+            var body = Part(dir, "body");
+
+            // If ANY cutout layer failed to load we fall back to a single full
+            // sprite so the wolf is always visible (a transparent window with
+            // no art looked like "nothing happened" when waking him).
+            if (legL == null || legR == null || armL == null || armR == null || body == null)
+            {
+                _simpleMode = true;
+                LegL.Source = LegR.Source = ArmL.Source = ArmR.Source = null;
+                LegLRot.Angle = LegRRot.Angle = ArmLRot.Angle = ArmRRot.Angle = 0;
+                BodyImg.Source = FullSprite(female) ?? body;
+                return;
+            }
+
+            _simpleMode = false;
+            LegL.Source  = legL;
+            LegR.Source  = legR;
+            ArmL.Source  = armL;
+            ArmR.Source  = armR;
+            BodyImg.Source = body;
 
             // Rotation pivots as fractions of each full-canvas layer: legs swing
             // from the hip, arms from the shoulder. Values differ slightly per
@@ -179,18 +200,56 @@ public partial class CompanionWindow : Window
                 ArmR.RenderTransformOrigin = new Point(0.654, 0.302);
             }
         }
-        catch { /* keep whatever art is already shown */ }
+        catch
+        {
+            // Last-ditch: show whatever full sprite we can so he is never blank.
+            try
+            {
+                _simpleMode = true;
+                LegL.Source = LegR.Source = ArmL.Source = ArmR.Source = null;
+                BodyImg.Source = FullSprite(_cfg.Companion == CompanionGender.Female);
+            }
+            catch { }
+        }
     }
 
-    private static BitmapImage Part(string dir, string name)
+    /// <summary>Load a cutout part, returning null (never throwing) if missing
+    /// so the caller can fall back to a single full sprite.</summary>
+    private static BitmapImage? Part(string dir, string name)
     {
-        var uri = new Uri($"pack://application:,,,/Assets/parts/{dir}/{name}.png", UriKind.Absolute);
-        var bmp = new BitmapImage();
-        bmp.BeginInit();
-        bmp.CacheOption = BitmapCacheOption.OnLoad;
-        bmp.UriSource = uri;
-        bmp.EndInit();
-        return bmp;
+        try
+        {
+            var uri = new Uri($"pack://application:,,,/Assets/parts/{dir}/{name}.png", UriKind.Absolute);
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption = BitmapCacheOption.OnLoad;
+            bmp.UriSource = uri;
+            bmp.EndInit();
+            return bmp;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>The whole-wolf sprite used when the cutout parts are unavailable.</summary>
+    private static BitmapImage? FullSprite(bool female)
+    {
+        foreach (var path in female
+                     ? new[] { "wolf-female.png", "wolf-companion.png", "wolf-male.png" }
+                     : new[] { "wolf-male.png", "wolf-companion.png", "wolf-female.png" })
+        {
+            try
+            {
+                var uri = new Uri($"pack://application:,,,/Assets/{path}", UriKind.Absolute);
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.UriSource = uri;
+                bmp.EndInit();
+                return bmp;
+            }
+            catch { }
+        }
+        return null;
     }
 
     /// <summary>Reload settings after the control panel changed them.</summary>
@@ -474,6 +533,9 @@ public partial class CompanionWindow : Window
     /// settles back to a neutral stand when the wolf stops.</summary>
     private void AnimateLimbs(bool walking)
     {
+        // In fallback mode there are no separate limb layers to swing.
+        if (_simpleMode) return;
+
         double target = walking ? 1.0 : 0.0;
         _legSwing += (target - _legSwing) * 0.18;
         if (_legSwing < 0.001) _legSwing = 0;

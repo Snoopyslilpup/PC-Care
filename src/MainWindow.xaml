@@ -315,45 +315,20 @@
                                 </Grid>
 
                                 <Grid Margin="0,16,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Big CPU temperature dial - custom blue-to-red scale with a live needle that moves with the temperature -->
-                                    <Grid Grid.Column="0" Width="196" Height="196" Margin="0,0,22,0">
-                                        <Image Source="/Assets/cpu-dial.png" Stretch="Uniform"/>
-                                        <!-- dim the centre so the readout stays legible -->
-                                        <Ellipse Width="108" Height="108" Fill="{StaticResource BgBrush}" Opacity="0.80"/>
-                                        <!-- temperature-coloured ring -->
-                                        <Ellipse x:Name="RigCpuRing" Stroke="{StaticResource AccentBrush}" StrokeThickness="5"
-                                                 Width="150" Height="150"/>
-                                        <!-- live needle: rotates with CPU temperature (see MainWindow.Rig.cs) -->
-                                        <Canvas>
-                                            <Polygon x:Name="RigCpuNeedle" Points="98,27 101,90 98,102 95,90"
-                                                     Fill="{StaticResource AccentBrush}">
-                                                <Polygon.RenderTransform>
-                                                    <RotateTransform x:Name="RigCpuNeedleRotate" CenterX="98" CenterY="98" Angle="-120"/>
-                                                </Polygon.RenderTransform>
-                                            </Polygon>
-                                        </Canvas>
-                                        <!-- needle hub cap -->
-                                        <Ellipse Width="22" Height="22" Fill="{StaticResource AccentBrush}"
-                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <Ellipse Width="12" Height="12" Fill="{StaticResource BgBrush}"
-                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                            <TextBlock Text="CPU TEMP" FontSize="10" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
-                                            <TextBlock x:Name="RigCpuTempText" Text="—" FontSize="38" FontWeight="Bold"
-                                                       Foreground="White" HorizontalAlignment="Center"/>
-                                            <TextBlock x:Name="RigCpuClockText" Text="— GHz" FontSize="12"
-                                                       Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <!-- Stat tiles -->
-                                    <WrapPanel Grid.Column="1">
+                                    <!-- Stat tiles (CPU-temp dial removed) -->
+                                    <WrapPanel>
+                                        <Border Background="{StaticResource Card2Brush}" CornerRadius="10" Padding="14" Margin="0,0,12,12" Width="150">
+                                            <StackPanel>
+                                                <TextBlock Text="CPU TEMP" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
+                                                <TextBlock x:Name="RigCpuTempText" Text="—" FontSize="24" FontWeight="Bold" Margin="0,4,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="{StaticResource Card2Brush}" CornerRadius="10" Padding="14" Margin="0,0,12,12" Width="150">
+                                            <StackPanel>
+                                                <TextBlock Text="CPU CLOCK" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
+                                                <TextBlock x:Name="RigCpuClockText" Text="—" FontSize="24" FontWeight="Bold" Margin="0,4,0,0"/>
+                                            </StackPanel>
+                                        </Border>
                                         <Border Background="{StaticResource Card2Brush}" CornerRadius="10" Padding="14" Margin="0,0,12,12" Width="150">
                                             <StackPanel>
                                                 <TextBlock Text="GPU TEMP" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>

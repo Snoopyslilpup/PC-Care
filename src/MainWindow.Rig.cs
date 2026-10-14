@@ -115,46 +115,16 @@ public partial class MainWindow
         }
         else { RigStorageText.Text = "\u2014"; RigStorageBar.Value = 0; }
 
-        // Colour the CPU dial by temperature and swing the needle to match.
+        // Colour the CPU-temperature readout by temperature (gauge/dial removed).
         if (s.CpuTempC is double t)
         {
             string key = t >= 90 ? "BadBrush" : t >= 80 ? "WarnBrush" : "GoodBrush";
-            var brush = (TryFindResource(key) as Brush) ?? RigCpuRing.Stroke;
-            RigCpuRing.Stroke = brush;
-            RigCpuNeedle.Fill = brush;
-            SwingNeedle(AngleForTemp(t));
+            if (TryFindResource(key) is Brush brush) RigCpuTempText.Foreground = brush;
         }
         else
         {
-            RigCpuRing.Stroke = (TryFindResource("Card2Brush") as Brush) ?? RigCpuRing.Stroke;
-            SwingNeedle(NeedleAngleMin);   // park at the low end when there is no reading
+            if (TryFindResource("TextBrush") is Brush brush) RigCpuTempText.Foreground = brush;
         }
-    }
-
-    // ----- CPU-temperature gauge needle -----
-    // These MUST match the scale baked into Assets/cpu-dial.png (build_gauge.py):
-    // 20 C -> -120 deg, 100 C -> +120 deg (0 deg = straight up, + = clockwise).
-    private const double NeedleTempMin = 20.0;
-    private const double NeedleTempMax = 100.0;
-    private const double NeedleAngleMin = -120.0;
-    private const double NeedleAngleMax = 120.0;
-
-    private static double AngleForTemp(double tempC)
-    {
-        double t = Math.Max(NeedleTempMin, Math.Min(NeedleTempMax, tempC));
-        return NeedleAngleMin
-               + (t - NeedleTempMin) / (NeedleTempMax - NeedleTempMin)
-                 * (NeedleAngleMax - NeedleAngleMin);
-    }
-
-    private void SwingNeedle(double targetAngle)
-    {
-        if (RigCpuNeedleRotate == null) return;
-        var anim = new DoubleAnimation(targetAngle, TimeSpan.FromMilliseconds(550))
-        {
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-        };
-        RigCpuNeedleRotate.BeginAnimation(RotateTransform.AngleProperty, anim);
     }
 
     private static void SetBar(ProgressBar bar, TextBlock label, double? pct, string suffix)

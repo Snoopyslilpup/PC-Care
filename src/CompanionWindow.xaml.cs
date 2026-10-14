@@ -29,7 +29,6 @@ public partial class CompanionWindow : Window
     private DispatcherTimer? _brain;    // decides what to do next
     private DispatcherTimer? _mover;    // walks toward the current target
     private DispatcherTimer? _monitor;  // reads temperatures
-    private DispatcherTimer? _bubble;   // auto-hides the speech bubble
 
     private enum Behaviour { Idle, Walk, Sit, Sleep, Scratch, Look, Yawn, Stretch, Play }
     private Behaviour _behaviour = Behaviour.Idle;
@@ -42,6 +41,8 @@ public partial class CompanionWindow : Window
     private bool _hasTargetY;
     private int _facing = 1;             // 1 = facing right, -1 = facing left
     private double _bobPhase;
+    private double _scale = 1.0;         // base companion size multiplier
+    private double _legSwing;            // eased 0..1 walk-cycle limb amplitude
     private bool _busy;                  // true while a timed pose plays out
     private DateTime _nextDecision = DateTime.MinValue;
     private DateTime _lastChit = DateTime.MinValue;
@@ -111,8 +112,6 @@ public partial class CompanionWindow : Window
         _mover.Tick += (_, _) => MoveTick();
         _monitor = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _monitor.Tick += (_, _) => MonitorTick();
-        _bubble = new DispatcherTimer();
-        _bubble.Tick += (_, _) => { _bubble!.Stop(); Bubble.Visibility = Visibility.Collapsed; };
 
         _brain.Start();
         _mover.Start();
@@ -132,31 +131,66 @@ public partial class CompanionWindow : Window
         _audio.SetGender(_cfg.Companion);
         ApplyCharacterImage();
 
-        double s = Math.Max(0.6, Math.Min(1.8, _cfg.Scale));
-        WolfImage.Width = 120 * s;
-        Width = Math.Max(240, 150 * s);
-        Height = Math.Max(300, 300 * s + 40);
+        _scale = Math.Max(0.6, Math.Min(1.8, _cfg.Scale));
+        UpdateFacing();
+        Width = Math.Max(240, 150 * _scale);
+        Height = Math.Max(300, 300 * _scale + 40);
 
         if (!_cfg.Enabled) Hide();
     }
 
-    /// <summary>Swap the sprite artwork to match the chosen character.</summary>
+    /// <summary>Apply the base size + facing to the shared sprite transform.</summary>
+    private void UpdateFacing()
+    {
+        Facing.ScaleX = _facing * _scale;
+        Facing.ScaleY = _scale;
+    }
+
+    /// <summary>Swap the five cutout layers (legs / arms / body) to match the
+    /// chosen character, and set each limb's rotation pivot (hip / shoulder).</summary>
     private void ApplyCharacterImage()
     {
         try
         {
-            string file = _cfg.Companion == CompanionGender.Female
-                ? "wolf-female.png"
-                : "wolf-male.png";
-            var uri = new Uri("pack://application:,,,/Assets/" + file, UriKind.Absolute);
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.UriSource = uri;
-            bmp.EndInit();
-            WolfImage.Source = bmp;
+            bool female = _cfg.Companion == CompanionGender.Female;
+            string dir = female ? "female" : "male";
+
+            LegL.Source  = Part(dir, "leg-l");
+            LegR.Source  = Part(dir, "leg-r");
+            ArmL.Source  = Part(dir, "arm-l");
+            ArmR.Source  = Part(dir, "arm-r");
+            BodyImg.Source = Part(dir, "body");
+
+            // Rotation pivots as fractions of each full-canvas layer: legs swing
+            // from the hip, arms from the shoulder. Values differ slightly per
+            // sprite so the joints line up exactly.
+            if (female)
+            {
+                LegL.RenderTransformOrigin = new Point(0.258, 0.598);
+                LegR.RenderTransformOrigin = new Point(0.745, 0.598);
+                ArmL.RenderTransformOrigin = new Point(0.343, 0.302);
+                ArmR.RenderTransformOrigin = new Point(0.655, 0.302);
+            }
+            else
+            {
+                LegL.RenderTransformOrigin = new Point(0.265, 0.598);
+                LegR.RenderTransformOrigin = new Point(0.752, 0.598);
+                ArmL.RenderTransformOrigin = new Point(0.342, 0.302);
+                ArmR.RenderTransformOrigin = new Point(0.654, 0.302);
+            }
         }
-        catch { /* keep whatever image is already shown */ }
+        catch { /* keep whatever art is already shown */ }
+    }
+
+    private static BitmapImage Part(string dir, string name)
+    {
+        var uri = new Uri($"pack://application:,,,/Assets/parts/{dir}/{name}.png", UriKind.Absolute);
+        var bmp = new BitmapImage();
+        bmp.BeginInit();
+        bmp.CacheOption = BitmapCacheOption.OnLoad;
+        bmp.UriSource = uri;
+        bmp.EndInit();
+        return bmp;
     }
 
     /// <summary>Reload settings after the control panel changed them.</summary>
@@ -370,38 +404,62 @@ public partial class CompanionWindow : Window
     private void FaceToward(double x)
     {
         _facing = x >= Left ? 1 : -1;
-        Facing.ScaleX = _facing;
+        UpdateFacing();
     }
 
     private void MoveTick()
     {
-        if (_behaviour != Behaviour.Walk) return;
-
-        const double speed = 3.0;
-        double dx = _targetX - Left;
-        double dy = _hasTargetY ? _targetY - Top : 0;
-        double dist = Math.Sqrt(dx * dx + dy * dy);
-
-        if (dist <= speed)
+        bool walking = _behaviour == Behaviour.Walk;
+        if (walking)
         {
-            Left = _targetX;
-            if (_hasTargetY) Top = _targetY;
-            Bob.Y = 0; Tilt.Angle = 0;
-            ArriveFromWalk();
-            return;
+            const double speed = 3.0;
+            double dx = _targetX - Left;
+            double dy = _hasTargetY ? _targetY - Top : 0;
+            double dist = Math.Sqrt(dx * dx + dy * dy);
+
+            if (dist <= speed)
+            {
+                Left = _targetX;
+                if (_hasTargetY) Top = _targetY;
+                Bob.Y = 0; Tilt.Angle = 0;
+                ArriveFromWalk();
+            }
+            else
+            {
+                double stepX = dx / dist * speed;
+                double stepY = dy / dist * speed;
+                Left += stepX;
+                Top += stepY;
+                _facing = stepX >= 0 ? 1 : -1;
+                UpdateFacing();
+
+                // little hop + tilt so the walk reads as a walk
+                _bobPhase += 0.35;
+                Bob.Y = -Math.Abs(Math.Sin(_bobPhase)) * 4;
+                Tilt.Angle = Math.Sin(_bobPhase) * 2.5;
+            }
         }
 
-        double stepX = dx / dist * speed;
-        double stepY = dy / dist * speed;
-        Left += stepX;
-        Top += stepY;
-        _facing = stepX >= 0 ? 1 : -1;
-        Facing.ScaleX = _facing;
+        AnimateLimbs(_behaviour == Behaviour.Walk);
+    }
 
-        // little hop + tilt so the walk reads as a walk
-        _bobPhase += 0.35;
-        Bob.Y = -Math.Abs(Math.Sin(_bobPhase)) * 4;
-        Tilt.Angle = Math.Sin(_bobPhase) * 2.5;
+    /// <summary>Walk cycle: legs swing in antiphase and the arms swing opposite
+    /// their same-side leg. The amplitude eases in while walking and smoothly
+    /// settles back to a neutral stand when the wolf stops.</summary>
+    private void AnimateLimbs(bool walking)
+    {
+        double target = walking ? 1.0 : 0.0;
+        _legSwing += (target - _legSwing) * 0.18;
+        if (_legSwing < 0.001) _legSwing = 0;
+
+        double s = Math.Sin(_bobPhase);
+        double leg = s * 14.0 * _legSwing;   // degrees
+        double arm = s * 11.0 * _legSwing;
+
+        LegLRot.Angle =  leg;
+        LegRRot.Angle = -leg;
+        ArmLRot.Angle = -arm;   // arms opposite the same-side leg
+        ArmRRot.Angle =  arm;
     }
 
     private void ArriveFromWalk()
@@ -454,7 +512,7 @@ public partial class CompanionWindow : Window
         MoodGlow.BeginAnimation(DropShadowEffect.OpacityProperty, fade);
     }
 
-    // ===================== speech bubble =====================
+    // ===================== voice =====================
     private void Say(string text, WolfMood mood, double seconds, bool speak = true)
         => Say(text, mood, seconds, null, speak);
 
@@ -462,8 +520,6 @@ public partial class CompanionWindow : Window
     {
         if (string.IsNullOrWhiteSpace(text)) return;
         SetMood(mood);
-        BubbleText.Text = text;
-        Bubble.Visibility = Visibility.Visible;
 
         if (speak && _cfg.Voice != WolfVoiceStyle.Silent)
         {
@@ -473,18 +529,11 @@ public partial class CompanionWindow : Window
             if (!played) _voice.Say(text);
             else _voice.StopSpeaking();
         }
-
-        _bubble?.Stop();
-        if (_bubble != null)
-        {
-            _bubble.Interval = TimeSpan.FromSeconds(Math.Max(2.5, seconds));
-            _bubble.Start();
-        }
     }
 
     private void Teardown()
     {
-        try { _brain?.Stop(); _mover?.Stop(); _monitor?.Stop(); _poseTimer?.Stop(); _bubble?.Stop(); } catch { }
+        try { _brain?.Stop(); _mover?.Stop(); _monitor?.Stop(); _poseTimer?.Stop(); } catch { }
         try { _voice.Dispose(); } catch { }
         try { _audio.Dispose(); } catch { }
     }
@@ -582,7 +631,7 @@ public partial class CompanionWindow : Window
         _dragMouseStart = PointToScreen(e.GetPosition(this));
         _dragLeftStart = Left;
         _dragTopStart = Top;
-        WolfImage.CaptureMouse();
+        SpriteBox.CaptureMouse();
     }
 
     private void OnWolfMouseMove(object sender, MouseEventArgs e)
@@ -603,7 +652,7 @@ public partial class CompanionWindow : Window
 
     private void OnWolfMouseUp(object sender, MouseButtonEventArgs e)
     {
-        WolfImage.ReleaseMouseCapture();
+        SpriteBox.ReleaseMouseCapture();
         if (_dragging && !_dragMoved)
         {
             // a real click (not a drag): cheeky reaction

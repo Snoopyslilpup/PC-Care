@@ -6,52 +6,59 @@
         ResizeMode="NoResize" SizeToContent="Manual"
         Width="240" Height="340" Left="80" Top="80">
 
-    <!-- The whole window is click-through-free: only the wolf graphic and the
-         bubble are hit-testable, the rest of the canvas is transparent. -->
+    <!-- Only the wolf graphic is hit-testable; the rest of the canvas is
+         transparent. The companion is voice-only now - no speech bubble. -->
     <Grid x:Name="Root">
         <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>     <!-- speech bubble floats here -->
+            <RowDefinition Height="*"/>     <!-- head-room above the wolf -->
             <RowDefinition Height="Auto"/>  <!-- wolf sits at the bottom -->
         </Grid.RowDefinitions>
 
-        <!-- Speech bubble -->
-        <Border x:Name="Bubble" Grid.Row="0" VerticalAlignment="Bottom" HorizontalAlignment="Center"
-                Background="#FF141A24" CornerRadius="12" Padding="12,9" Margin="0,0,0,6"
-                MaxWidth="230" Visibility="Collapsed" IsHitTestVisible="False">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="14" ShadowDepth="0" Color="#FF000000" Opacity="0.6"/>
-            </Border.Effect>
-            <TextBlock x:Name="BubbleText" Foreground="#FFF1F4FA" FontSize="13" FontWeight="SemiBold"
-                       FontFamily="Segoe UI" TextWrapping="Wrap" Text=""/>
-        </Border>
+        <!-- Wolf sprite: a cutout rig of five full-canvas layers that share one
+             transform group. Legs and arms each have their own rotation so the
+             limbs actually swing through the walk cycle; the body is drawn on
+             TOP so the limb roots/pivots stay hidden. -->
+        <Grid x:Name="SpriteBox" Grid.Row="1" Width="120"
+              HorizontalAlignment="Center" VerticalAlignment="Bottom"
+              RenderTransformOrigin="0.5,1.0" Cursor="Hand"
+              MouseLeftButtonDown="OnWolfMouseDown"
+              MouseLeftButtonUp="OnWolfMouseUp"
+              MouseMove="OnWolfMouseMove"
+              MouseRightButtonUp="OnWolfRightClick">
+            <Grid.RenderTransform>
+                <TransformGroup>
+                    <!-- facing (ScaleX flips) + overall size -->
+                    <ScaleTransform x:Name="Facing" ScaleX="1" ScaleY="1"/>
+                    <!-- little squash/pulse on reactions -->
+                    <ScaleTransform x:Name="Pulse" ScaleX="1" ScaleY="1" CenterX="60" CenterY="150"/>
+                    <!-- walking bob + tilt -->
+                    <TranslateTransform x:Name="Bob" X="0" Y="0"/>
+                    <RotateTransform x:Name="Tilt" Angle="0" CenterX="60" CenterY="150"/>
+                </TransformGroup>
+            </Grid.RenderTransform>
+            <Grid.Effect>
+                <!-- mood glow: colour animated from code-behind -->
+                <DropShadowEffect x:Name="MoodGlow" BlurRadius="26" ShadowDepth="0"
+                                  Color="#FFE8902B" Opacity="0"/>
+            </Grid.Effect>
 
-        <!-- Wolf sprite -->
-        <Grid Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Bottom">
-            <Image x:Name="WolfImage" Source="/Assets/wolf-companion.png" Stretch="Uniform"
-                   Width="120" RenderTransformOrigin="0.5,1.0" Cursor="Hand"
-                   MouseLeftButtonDown="OnWolfMouseDown"
-                   MouseLeftButtonUp="OnWolfMouseUp"
-                   MouseMove="OnWolfMouseMove"
-                   MouseRightButtonUp="OnWolfRightClick">
-                <Image.RenderTransform>
-                    <TransformGroup>
-                        <!-- facing (ScaleX flips) + overall size -->
-                        <ScaleTransform x:Name="Facing" ScaleX="1" ScaleY="1"/>
-                        <!-- little squash/pulse on reactions -->
-                        <ScaleTransform x:Name="Pulse" ScaleX="1" ScaleY="1" CenterX="60" CenterY="150"/>
-                        <!-- walking bob + tilt -->
-                        <TranslateTransform x:Name="Bob" X="0" Y="0"/>
-                        <RotateTransform x:Name="Tilt" Angle="0" CenterX="60" CenterY="150"/>
-                    </TransformGroup>
-                </Image.RenderTransform>
-                <Image.Effect>
-                    <!-- mood glow: colour animated from code-behind -->
-                    <DropShadowEffect x:Name="MoodGlow" BlurRadius="26" ShadowDepth="0"
-                                      Color="#FFE8902B" Opacity="0"/>
-                </Image.Effect>
+            <!-- limbs first (behind the body) -->
+            <Image x:Name="LegL" Stretch="Uniform" Width="120">
+                <Image.RenderTransform><RotateTransform x:Name="LegLRot" Angle="0"/></Image.RenderTransform>
             </Image>
+            <Image x:Name="LegR" Stretch="Uniform" Width="120">
+                <Image.RenderTransform><RotateTransform x:Name="LegRRot" Angle="0"/></Image.RenderTransform>
+            </Image>
+            <Image x:Name="ArmL" Stretch="Uniform" Width="120">
+                <Image.RenderTransform><RotateTransform x:Name="ArmLRot" Angle="0"/></Image.RenderTransform>
+            </Image>
+            <Image x:Name="ArmR" Stretch="Uniform" Width="120">
+                <Image.RenderTransform><RotateTransform x:Name="ArmRRot" Angle="0"/></Image.RenderTransform>
+            </Image>
+            <!-- body drawn on top to cover the limb joints -->
+            <Image x:Name="BodyImg" Stretch="Uniform" Width="120"/>
 
-            <!-- "Zzz" shown while sleeping -->
+            <!-- "Zzz" shown while sleeping (sleep indicator, not a speech bubble) -->
             <TextBlock x:Name="SleepZ" Text="z z Z" Foreground="#FF9FF6FF" FontSize="18"
                        FontWeight="Bold" FontFamily="Segoe UI" Visibility="Collapsed"
                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,10,0"

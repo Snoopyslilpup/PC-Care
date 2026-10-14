@@ -23,13 +23,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Management" Version="8.0.0" />
+    <!-- Bumped to 10.0.2 to satisfy LibreHardwareMonitorLib's requirement
+         (it needs System.Management >= 10.0.2). Avoids NU1605 downgrade error. -->
+    <PackageReference Include="System.Management" Version="10.0.2" />
     <!-- Built-in hardware sensor reader: reads CPU / motherboard / GPU
          temperatures and fan speeds directly from the hardware, so temperature
          monitoring works WITHOUT installing any third-party tool. It loads a
          small signed sensor driver, which needs the app to run as
-         administrator. Floating 0.9.* so restore always resolves a valid build. -->
-    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.*" />
+         administrator. Pinned to 0.9.6 so its System.Management dependency
+         (>= 10.0.2) matches ours exactly and restore stays deterministic. -->
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <!-- Embedded in-app payment page (SimplyBlu checkout). Uses the Evergreen
          WebView2 runtime that ships with Windows 10/11. Floating 1.0.* so the
          restore always resolves a valid published build. -->
@@ -38,12 +41,4 @@
 
   <ItemGroup>
     <None Update="Assets\app.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <!-- Brand wolf logo, embedded so it renders in the app UI. -->
-    <Resource Include="Assets\wolf-logo.png" />
-    <!-- Mascot shown on "The Rig" dashboard hero card. -->
-    <Resource Include="Assets\rig-wolf.jpg" />
-  </ItemGroup>
-
-</Project>
+      <C

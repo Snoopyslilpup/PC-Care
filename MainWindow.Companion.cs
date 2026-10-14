@@ -36,6 +36,31 @@ public partial class MainWindow
             }
             catch { }
         };
+
+        // When the main window is minimised (or restored), keep the companion
+        // visible and independent on the desktop. It must NOT disappear with
+        // the main app.
+        StateChanged += (_, _) =>
+        {
+            try
+            {
+                if (_companion == null) return;
+                if (WindowState == WindowState.Minimized)
+                {
+                    // Ensure companion stays out and on top of the desktop
+                    if (!_companion.IsVisible) _companion.Show();
+                    _companion.Visibility = Visibility.Visible;
+                    if (_companion.WindowState == WindowState.Minimized)
+                        _companion.WindowState = WindowState.Normal;
+                    bool top = true;
+                    try { top = CompanionConfig.Load().AlwaysOnTop; } catch { }
+                    _companion.Topmost = false;
+                    _companion.Topmost = top;
+                }
+            }
+            catch { }
+        };
+
         // NOTE: deliberately NOT auto-launching here. The companion must only
         // appear on an explicit "Wake the wolf" click, never on startup.
     }
@@ -47,6 +72,8 @@ public partial class MainWindow
         if (_companion == null)
         {
             _companion = new CompanionWindow();
+            // Intentionally NOT setting Owner = this. An owned window is hidden
+            // when its owner is minimized; the companion must stay on the desktop.
             _companion.OpenPanelRequested += (_, _) => OpenCompanionPanel();
             _companion.OpenDiagnosticsRequested += (_, _) => ShowDiagnostics();
             _companion.Closed += (_, _) => _companion = null;
@@ -56,6 +83,19 @@ public partial class MainWindow
         {
             _companion.Show();
         }
+        // Re-assert visibility / topmost in case the main window was just minimised
+        try
+        {
+            _companion.Visibility = Visibility.Visible;
+            _companion.Show();
+            if (_companion.WindowState == WindowState.Minimized)
+                _companion.WindowState = WindowState.Normal;
+            bool top = true;
+            try { top = CompanionConfig.Load().AlwaysOnTop; } catch { }
+            _companion.Topmost = false;
+            _companion.Topmost = top;
+        }
+        catch { }
         return _companion;
     }
 

@@ -80,6 +80,13 @@ public partial class CompanionWindow : Window
         ApplyConfig();
         Loaded += OnLoaded;
         Closing += (_, _) => Teardown();
+        // Never allow this window to be minimised with the main app — it is a
+        // desktop pet that must stay visible while the process is running.
+        StateChanged += (_, _) =>
+        {
+            if (WindowState == WindowState.Minimized)
+                WindowState = WindowState.Normal;
+        };
     }
 
     // ----- window styling: tool window, no Alt-Tab, no activation steal -----

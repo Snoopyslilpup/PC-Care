@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Companion</title>
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#14161C;}
+  #stage{position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;}
+  /* Nova is a 2D sprite drawn on the same dark panel colour the art was baked on,
+     so she blends seamlessly. No WebGL / GPU / 3D engine = nothing that can corrupt. */
+  #nova{
+    height:100%;width:auto;max-width:100%;object-fit:contain;
+    transform-origin:50% 100%;
+    will-change:transform;
+    animation:breathe 4.2s ease-in-out infinite;
+    filter:drop-shadow(0 6px 14px rgba(0,0,0,.45));
+  }
+  #nova.flip{transform:scaleX(-1);}
+  /* gentle idle breathing */
+  @keyframes breathe{
+    0%  {transform:translateY(0)    scale(1.000);}
+    50% {transform:translateY(-2px) scale(1.012);}
+    100%{transform:translateY(0)    scale(1.000);}
+  }
+  /* talking: quicker little head/body bob */
+  body.talk #nova{animation:talkbob 0.5s ease-in-out infinite;}
+  @keyframes talkbob{
+    0%{transform:translateY(0) rotate(0deg);}
+    50%{transform:translateY(-3px) rotate(-0.6deg);}
+    100%{transform:translateY(0) rotate(0deg);}
+  }
+  /* walk / run: a little side-to-side waddle */
+  body.walk #nova{animation:waddle 0.6s ease-in-out infinite;}
+  body.run  #nova{animation:waddle 0.32s ease-in-out infinite;}
+  @keyframes waddle{
+    0%{transform:translateY(0) rotate(-1.5deg);}
+    50%{transform:translateY(-4px) rotate(1.5deg);}
+    100%{transform:translateY(0) rotate(-1.5deg);}
+  }
+  /* jump: a quick hop */
+  body.jump #nova{animation:hop 0.7s ease-out 1;}
+  @keyframes hop{
+    0%{transform:translateY(0) scale(1,1);}
+    20%{transform:translateY(2px) scale(1.04,0.95);}
+    55%{transform:translateY(-26px) scale(0.97,1.05);}
+    80%{transform:translateY(0) scale(1.03,0.97);}
+    100%{transform:translateY(0) scale(1,1);}
+  }
+  /* sit: settle down a touch */
+  body.sit #nova{animation:breathe 4.2s ease-in-out infinite;transform:translateY(8px) scale(0.94);}
+  /* sleep: dim, sink, slow breathing */
+  #stage{transition:opacity .9s ease;}
+  body.sleep #stage{opacity:.72;}
+  body.sleep #nova{animation:snooze 5.5s ease-in-out infinite;}
+  @keyframes snooze{
+    0%{transform:translateY(10px) scale(0.93);}
+    50%{transform:translateY(7px) scale(0.945);}
+    100%{transform:translateY(10px) scale(0.93);}
+  }
+  /* soft blink: a thin eyelid sweep so she doesn't feel frozen */
+  #blink{position:fixed;inset:0;background:rgba(10,11,15,0);pointer-events:none;}
+
+  /* Speech bubble shown above Nova when she talks */
+  #bubble{
+    position:fixed;left:50%;top:6px;transform:translateX(-50%) translateY(-6px);
+    max-width:210px;padding:9px 13px;border-radius:12px;
+    background:rgba(20,22,28,0.94);color:#f2f4f8;
+    font:13px/1.35 "Segoe UI",system-ui,sans-serif;
+    box-shadow:0 6px 20px rgba(0,0,0,.45);
+    border:1px solid rgba(255,176,32,.55);
+    opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
+    white-space:normal;word-wrap:break-word;text-align:center;z-index:5;
+  }
+  #bubble.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #bubble .tag{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;
+    color:#ffb020;margin-bottom:3px;text-transform:uppercase;}
+  #bubble::after{content:"";position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);
+    border:7px solid transparent;border-top-color:rgba(20,22,28,0.94);border-bottom:0;}
+  /* Sleepy "z z z" that floats up while she dozes */
+  #zzz{position:fixed;left:62%;top:14%;color:#bcd7ff;font:700 20px "Segoe UI",system-ui;
+    opacity:0;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.6);transition:opacity .6s ease;z-index:4;}
+  body.sleep #zzz{opacity:.9;animation:floatz 3s ease-in-out infinite;}
+  @keyframes floatz{0%{transform:translateY(0)}50%{transform:translateY(-12px)}100%{transform:translateY(0)}}
+</style>
+</head>
+<body class="idle">
+  <div id="stage"><img id="nova" src="nova.jpg" alt="Nova"/></div>
+  <div id="blink"></div>
+  <div id="bubble"><span class="tag" id="bubbleTag">Nova</span><span id="bubbleText"></span></div>
+  <div id="zzz">z&nbsp;z&nbsp;z</div>
+  <script>
+  'use strict';
+  var host = (window.chrome && window.chrome.webview) ? window.chrome.webview : null;
+  function toHost(m){ try{ if(host) host.postMessage(m);}catch(e){} }
+  window.onerror = function(msg, src, line){
+    toHost({type:'error', msg: String(msg) + ' @ ' + (src||'') + ':' + (line||0)});
+  };
+
+  var novaImg = document.getElementById('nova');
+  var body = document.body;
+  var STATES = ['idle','talk','walk','run','jump','sit','play','sleep'];
+  var jumpTimer = null;
+
+  // The C# host waits for a 'ready' message before it enables commands, so we
+  // MUST report ready once the sprite is on screen. This 2D path has no 3D model
+  // to load, so readiness = the image is decoded.
+  function reportReady(){
+    toHost({type:'diag', renderer:'2D sprite (no WebGL)', vendor:'WhateverITPCCare'});
+    toHost({type:'ready', mode:'2d'});
+  }
+  if(novaImg.complete && novaImg.naturalWidth>0){ reportReady(); }
+  else {
+    novaImg.addEventListener('load', reportReady);
+    novaImg.addEventListener('error', function(){
+      toHost({type:'error', msg:'nova.jpg (companion art) failed to load from the companion folder.'});
+    });
+  }
+
+  document.body.addEventListener('pointerdown', function(){ toHost({type:'click'}); });
+
+  function setState(s){
+    s = String(s||'idle');
+    if(STATES.indexOf(s) < 0) s = 'idle';
+    // 'play' has no distinct art; treat it like a lively idle so voice/bubble still work.
+    var cls = (s==='play') ? 'idle' : s;
+    for(var i=0;i<STATES.length;i++){ body.classList.remove(STATES[i]); }
+    body.classList.add(cls);
+    if(jumpTimer){ clearTimeout(jumpTimer); jumpTimer=null; }
+    if(s==='jump'){
+      // one-shot hop, then fall back to idle
+      jumpTimer = setTimeout(function(){ setState('idle'); toHost({type:'jumped'}); }, 720);
+    }
+  }
+
+  function setFacing(dir){
+    if(dir<0) novaImg.classList.add('flip'); else novaImg.classList.remove('flip');
+  }
+
+  // periodic soft blink so she feels alive (eyelid sweep over the whole sprite)
+  var blink = document.getElementById('blink');
+  function doBlink(){
+    blink.style.transition='background .09s ease';
+    blink.style.background='rgba(10,11,15,0.0)';
+    blink.animate(
+      [{background:'rgba(10,11,15,0)'},{background:'rgba(10,11,15,0.22)'},{background:'rgba(10,11,15,0)'}],
+      {duration:170, easing:'ease-in-out'}
+    );
+    setTimeout(doBlink, 2600 + Math.random()*3400);
+  }
+  setTimeout(doBlink, 2000);
+
+  //__VOICE__
+  // ===== voice (recorded mp3 lines) + speech bubble =====
+  var bubble=document.getElementById('bubble'),
+      bText=document.getElementById('bubbleText'),
+      bTag=document.getElementById('bubbleTag'), bubbleTimer=null;
+
+  var VOICE_GENDER='female';
+  var PREFIX={ male:'wolf_alive', female:'wolf_female' };
+  var COUNTS={ click:6, good:4, hot:5, random:2 };   // multi-take categories
+  var audioEl=new Audio(); audioEl.volume=1.0; audioEl.preload='auto';
+  var talking=false;
+  audioEl.addEventListener('ended', function(){ talking=false;
+    if(body.classList.contains('talk')) setState('idle'); });
+  audioEl.addEventListener('error', function(){ talking=false;
+    if(body.classList.contains('talk')) setState('idle'); });
+
+  function voiceFile(cat){
+    var g=VOICE_GENDER, pre=PREFIX[g]||PREFIX.female;
+    if(cat==='startup'||cat==='shutdown') return 'voices/'+g+'/'+pre+'_'+cat+'.mp3';
+    var n=COUNTS[cat]; if(!n) return null;
+    var i=1+Math.floor(Math.random()*n), nn=(i<10?'0':'')+i;
+    return 'voices/'+g+'/'+pre+'_'+cat+'_'+nn+'.mp3';
+  }
+  function playVoice(cat){
+    var f=voiceFile(cat); if(!f) return false;
+    try{
+      audioEl.src=f; audioEl.currentTime=0; talking=true;
+      if(!body.classList.contains('sleep')) setState('talk');
+      var pr=audioEl.play();
+      if(pr && pr['catch']) pr['catch'](function(){ talking=false; });
+      return true;
+    }catch(e){ talking=false; return false; }
+  }
+
+  function speak(text, tag, mood, cat){
+    if(text){
+      bTag.textContent = tag || 'Nova';
+      bText.textContent = text;
+      bubble.className='show';
+      if(bubbleTimer) clearTimeout(bubbleTimer);
+      var ms = Math.min(9000, 2200 + text.length*55);
+      bubbleTimer = setTimeout(function(){ bubble.className=''; }, ms);
+    }
+    var played = cat ? playVoice(cat) : false;
+    if(played) return;   // recorded line is playing; it drives the talk pose
+    if(text && !body.classList.contains('sleep')){ talking=true; setState('talk'); }
+    try{
+      if(window.speechSynthesis && text){
+        var u=new SpeechSynthesisUtterance(text);
+        u.rate=1.0; u.pitch=(mood==='warn')?0.98:1.06; u.volume=1.0;
+        var vs=window.speechSynthesis.getVoices();
+        var wantFemale = (VOICE_GENDER==='female');
+        var pick=vs.find(function(v){
+          return wantFemale ? /female|zira|hazel|susan|aria/i.test(v.name)
+                            : /male|david|george|mark|guy/i.test(v.name);
+        }) || vs.find(function(v){return /en-GB|en-US/i.test(v.lang);}) || vs[0];
+        if(pick) u.voice=pick;
+        u.onend=function(){ talking=false; if(body.classList.contains('talk')) setState('idle'); };
+        window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+      } else { talking=false; }
+    }catch(e){ talking=false; }
+  }
+
+  // ===== public API used by the C# host via ExecuteScriptAsync =====
+  window.Companion = {
+    play:    function(s){ setState(String(s||'idle')); },
+    face:    function(d){ setFacing(Number(d)||1); },
+    speak:   function(t,tag,mood,cat){ speak(String(t||''), tag, mood, cat?String(cat):''); },
+    voice:   function(cat){ playVoice(String(cat||'')); },
+    setVoice:function(g){ VOICE_GENDER=(String(g||'').toLowerCase()==='male')?'male':'female'; },
+    hush:    function(){ try{window.speechSynthesis.cancel();}catch(e){}
+                          try{audioEl.pause();}catch(e){} talking=false; bubble.className='';
+                          if(body.classList.contains('talk')) setState('idle'); }
+  };
+
+  if(window.speechSynthesis){ window.speechSynthesis.onvoiceschanged=function(){}; }
+  setState('idle');
+  </script>
+</body>
+</html>

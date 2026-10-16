@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Companion</title>
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+  #stage{position:fixed;inset:0;transition:opacity .9s ease;}
+  body.dozing #stage{opacity:.72;}
+  canvas{display:block;}
+  /* Speech bubble shown above the wolf when she talks */
+  #bubble{
+    position:fixed;left:50%;top:6px;transform:translateX(-50%) translateY(-6px);
+    max-width:230px;padding:9px 13px;border-radius:12px;
+    background:rgba(20,22,28,0.94);color:#f2f4f8;
+    font:13px/1.35 "Segoe UI",system-ui,sans-serif;
+    box-shadow:0 6px 20px rgba(0,0,0,.45);
+    border:1px solid rgba(255,176,32,.55);
+    opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
+    white-space:normal;word-wrap:break-word;text-align:center;
+  }
+  #bubble.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #bubble .tag{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;
+    color:#ffb020;margin-bottom:3px;text-transform:uppercase;}
+  #bubble::after{content:"";position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);
+    border:7px solid transparent;border-top-color:rgba(20,22,28,0.94);border-bottom:0;}
+  /* Sleepy "z z z" that floats up while she dozes */
+  #zzz{position:fixed;left:58%;top:28%;color:#bcd7ff;font:700 20px "Segoe UI",system-ui;
+    opacity:0;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.6);transition:opacity .6s ease;}
+  body.dozing #zzz{opacity:.9;animation:floatz 3s ease-in-out infinite;}
+  @keyframes floatz{0%{transform:translateY(0)}50%{transform:translateY(-12px)}100%{transform:translateY(0)}}
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="bubble"><span class="tag" id="bubbleTag">Nova</span><span id="bubbleText"></span></div>
+  <div id="zzz">z&nbsp;z&nbsp;z</div>
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
+  <script>
+  'use strict';
+  var host = (window.chrome && window.chrome.webview) ? window.chrome.webview : null;
+  function toHost(m){ try{ if(host) host.postMessage(m);}catch(e){} }
+  // Surface ANY uncaught JS error (e.g. vendor scripts or the .glb failing to
+  // load) back to the host so the C# side never hangs waiting for 'ready'.
+  window.onerror = function(msg, src, line){
+    toHost({type:'error', msg: String(msg) + ' @ ' + (src||'') + ':' + (line||0)});
+  };
+  if(typeof THREE === 'undefined'){
+    toHost({type:'error', msg:'three.js failed to load from vendor/ - companion scripts missing.'});
+  }
+
+  var scene, camera, renderer, clock, mixer, model;
+  var actions = {}, current = null, bones = {}, bindRot = {}, bindPos = {};
+  var state = 'idle', facing = 1, idleT = 0, jumpSeq = null;
+  var poseState = 'idle';   // which procedural pose is active (null when a clip drives the rig)
+  var talking = false;      // true while a voice line / TTS is speaking (drives mouth-ish head bob)
+  var toy = null;           // little "file" prop she bats around when playing
+
+  function init(){
+    scene = new THREE.Scene();
+    var w = window.innerWidth, h = window.innerHeight;
+    camera = new THREE.PerspectiveCamera(32, w/h, 0.1, 100);
+    camera.position.set(0, 1.05, 4.2);
+    camera.lookAt(0, 0.95, 0);
+    renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+    renderer.setClearColor(0x000000, 0);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+    renderer.setSize(w, h);
+    if (renderer.outputEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
+    document.getElementById('stage').appendChild(renderer.domElement);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 1.05));
+    var key = new THREE.DirectionalLight(0xfff0d8, 1.25); key.position.set(2,4,3); scene.add(key);
+    var rim = new THREE.DirectionalLight(0xffb020, 0.6); rim.position.set(-3,2,-2); scene.add(rim);
+
+    var loader = new THREE.GLTFLoader();
+    loader.load('wolf.glb', function(gltf){ onLoaded(gltf); },
+      undefined, function(err){ toHost({type:'error', msg:String(err)}); });
+    window.addEventListener('resize', onResize);
+    document.body.addEventListener('pointerdown', function(){ toHost({type:'click'}); });
+  }
+
+  function onResize(){
+    var w=window.innerWidth, h=window.innerHeight;
+    camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h);
+  }
+
+  function onLoaded(gltf){
+    model = gltf.scene;
+    var box = new THREE.Box3().setFromObject(model);
+    var size = new THREE.Vector3(); box.getSize(size);
+    var s = 1.85 / (size.y || 1); model.scale.setScalar(s);
+    box.setFromObject(model);
+    var c = new THREE.Vector3(); box.getCenter(c);
+    model.position.x -= c.x; model.position.z -= c.z;
+    model.position.y -= box.min.y;              // feet on y=0
+    scene.add(model);
+    model.traverse(function(o){
+      if (o.isBone && o.name){ bones[o.name.replace('mixamorig','')] = o; }
+      if (o.isMesh){ o.frustumCulled=false; o.castShadow=false; }
+    });
+    // Capture the bind pose so every procedural pose can be expressed as a
+    // gentle offset FROM it (and we can always lerp back to a clean stand).
+    for (var k in bones){ var b=bones[k];
+      bindRot[k] = { x:b.rotation.x, y:b.rotation.y, z:b.rotation.z }; }
+    if (bones.Hips) bindPos.Hips = { y:bones.Hips.position.y };
+
+    mixer = new THREE.AnimationMixer(model);
+    gltf.animations.forEach(function(clip){ actions[clip.name] = mixer.clipAction(clip); });
+    mixer.addEventListener('finished', onActionFinished);
+    setState('idle');
+    toHost({type:'ready', anims:Object.keys(actions)});
+  }
+  // ===== clip-based animation (the authored glb clips: walk / sprint / jump) =====
+  var CLIP = { walk:'Walk', run:'Sprint', sprint:'Sprint',
+               jumpstart:'Jump Start', jump:'Jump', jumpland:'Jump Land' };
+
+  function fade(clip, loop, timeScale){
+    var next = actions[clip]; if(!next) return null;
+    next.reset();
+    next.setLoop(loop===undefined?THREE.LoopRepeat:loop, Infinity);
+    next.clampWhenFinished = (loop===THREE.LoopOnce);
+    next.timeScale = timeScale||1;
+    next.enabled = true; next.setEffectiveWeight(1);
+    if(current && current!==next){ next.crossFadeFrom(current, 0.28, false); }
+    next.play(); current = next; return next;
+  }
+
+  // ===== procedural poses (idle / talk / sit / play / sleep) =====
+  // The uploaded rig only ships walk/sprint/jump clips, so these life-like
+  // poses are built by posing the skeleton each frame: an offset FROM the bind
+  // pose, lerped smoothly, with a little looping motion on top. All values are
+  // easy to tweak if you want to fine-tune a pose.
+  var ARMS = {                      // arms resting down by her sides (bind pose is a T)
+    LeftShoulder:{z:-0.12}, RightShoulder:{z:0.12},
+    LeftArm:{z:-1.28,x:0.08}, RightArm:{z:1.28,x:0.08},
+    LeftForeArm:{z:-0.22}, RightForeArm:{z:0.22}
+  };
+  function merge(a,b){ var o={}; for(var k in a)o[k]=a[k]; for(var k in b)o[k]=b[k]; return o; }
+  var SITLEGS = {                   // folded legs, used for sit / play / sleep
+    Hips:{x:-0.12}, Spine:{x:0.14},
+    LeftUpLeg:{x:-1.45,z:0.20}, RightUpLeg:{x:-1.45,z:-0.20},
+    LeftLeg:{x:1.55}, RightLeg:{x:1.55}
+  };
+  var POSES = {
+    idle:  { hipF:1.00, bones: ARMS },
+    talk:  { hipF:1.00, bones: merge(ARMS, { Head:{y:0.0}, RightArm:{z:1.05,x:0.18}, RightForeArm:{z:0.45} }) },
+    sit:   { hipF:0.55, bones: merge(ARMS, merge(SITLEGS, { LeftArm:{z:-1.0}, RightArm:{z:1.0} })) },
+    play:  { hipF:0.55, bones: merge(ARMS, merge(SITLEGS, { LeftArm:{z:-0.9}, RightArm:{z:0.9,x:0.3} })) },
+    sleep: { hipF:0.42, bones: merge(ARMS, merge(SITLEGS, {
+              Spine:{x:0.35}, Spine1:{x:0.30}, Spine2:{x:0.20}, Neck:{x:0.40}, Head:{x:0.60,y:0.20},
+              LeftUpLeg:{x:-1.55,z:0.35}, RightUpLeg:{x:-1.55,z:-0.35}, LeftLeg:{x:1.75}, RightLeg:{x:1.75},
+              LeftArm:{z:-0.70}, RightArm:{z:0.70} })) }
+  };
+
+  function lerpBone(key, off, k){
+    var b=bones[key], r=bindRot[key]; if(!b||!r) return;
+    b.rotation.x += ((r.x+(off.x||0)) - b.rotation.x)*k;
+    b.rotation.y += ((r.y+(off.y||0)) - b.rotation.y)*k;
+    b.rotation.z += ((r.z+(off.z||0)) - b.rotation.z)*k;
+  }
+  function lerpHipsY(factor, k){
+    var b=bones.Hips, p=bindPos.Hips; if(!b||!p) return;
+    b.position.y += (p.y*factor - b.position.y)*k;
+  }
+
+  function ensureToy(){
+    if(toy) return;
+    var g=new THREE.BoxGeometry(0.16,0.20,0.02);
+    var m=new THREE.MeshStandardMaterial({color:0xffb020, emissive:0x3a2300, roughness:0.6});
+    toy=new THREE.Mesh(g,m); toy.visible=false; scene.add(toy);
+  }
+  function updateToy(t){
+    ensureToy();
+    if(!bones.RightHand){ return; }
+    var p=new THREE.Vector3(); bones.RightHand.getWorldPosition(p);
+    toy.visible=true; toy.position.copy(p);
+    toy.position.y += 0.05 + Math.abs(Math.sin(t*7))*0.12;
+    toy.rotation.z = Math.sin(t*5)*0.45;
+  }
+
+  function applyPose(dt){
+    if(!poseState || !POSES[poseState]) return;
+    var k = 1 - Math.exp(-dt*7);
+    idleT += dt;
+    var P = POSES[poseState], t = idleT;
+    var off = {};
+    for(var key in P.bones){ var s=P.bones[key]; off[key]={x:s.x||0,y:s.y||0,z:s.z||0}; }
+    function add(key,ax,v){ if(!off[key])off[key]={x:0,y:0,z:0}; off[key][ax]+=v; }
+
+    if(poseState==='idle'){
+      add('Spine','x',Math.sin(t*1.6)*0.030);
+      add('Spine1','z',Math.sin(t*0.7)*0.020);
+      add('Head','y',Math.sin(t*0.45)*0.22); add('Head','x',Math.sin(t*1.6)*0.030);
+    } else if(poseState==='talk'){
+      var g = talking ? (0.05 + Math.abs(Math.sin(t*12))*0.09) : Math.sin(t*1.6)*0.02;
+      add('Head','x', g); add('Spine','x', Math.sin(t*1.8)*0.02);
+      if(talking) add('RightForeArm','z', Math.sin(t*8)*0.12);
+    } else if(poseState==='sit'){
+      add('Spine','x',Math.sin(t*1.2)*0.02); add('Head','y',Math.sin(t*0.4)*0.16);
+    } else if(poseState==='play'){
+      var bat=Math.sin(t*7);
+      add('RightArm','x', bat*0.28); add('RightForeArm','z', bat*0.40-0.20);
+      add('Head','x', Math.abs(bat)*0.10); add('Head','y', Math.sin(t*2.0)*0.08);
+      updateToy(t);
+    } else if(poseState==='sleep'){
+      add('Spine','x',Math.sin(t*0.7)*0.020); add('Head','x',Math.sin(t*0.7)*0.015);
+    }
+
+    for(var b in off) lerpBone(b, off[b], k);
+    lerpHipsY(P.hipF||1, k);
+  }
+
+  function setState(s){
+    s=String(s||'idle');
+    if(s===state && s!=='jump' && s!=='alert') return;
+    state=s; jumpSeq=null;
+    if(toy && s!=='play') toy.visible=false;
+    if(s==='sleep') document.body.classList.add('dozing');
+    else document.body.classList.remove('dozing');
+
+    // authored clips
+    if(s==='walk'){ poseState=null; fade('Walk', THREE.LoopRepeat, 1.0); return; }
+    if(s==='run'){  poseState=null; fade('Sprint', THREE.LoopRepeat, 1.0); return; }
+    if(s==='jump'){ poseState=null; jumpSeq='start'; fade('Jump Start', THREE.LoopOnce, 1.1); return; }
+    if(s==='alert'){ poseState=null; jumpSeq='alertjump'; fade('Jump Start', THREE.LoopOnce, 1.2); return; }
+
+    // procedural poses
+    if(s==='idle'||s==='talk'||s==='sit'||s==='play'||s==='sleep'){
+      if(current){ current.fadeOut(0.3); current=null; }
+      poseState=s; idleT=0; return;
+    }
+    var cn=CLIP[s]; if(cn){ poseState=null; fade(cn, THREE.LoopRepeat, 1.0); }
+  }
+
+  function onActionFinished(){
+    if(jumpSeq==='start'){ jumpSeq='air'; fade('Jump', THREE.LoopOnce, 1.0); return; }
+    if(jumpSeq==='air'){ jumpSeq='land'; fade('Jump Land', THREE.LoopOnce, 1.0); return; }
+    if(jumpSeq==='land'){ jumpSeq=null; setState('idle'); toHost({type:'jumped'}); return; }
+    if(jumpSeq==='alertjump'){ jumpSeq='alertland'; fade('Jump Land', THREE.LoopOnce, 1.0); return; }
+    if(jumpSeq==='alertland'){ jumpSeq=null; setState('idle'); return; }
+  }
+
+  function setFacing(dir){
+    facing = dir<0 ? -1 : 1;
+    if(model){ model.rotation.y = facing>0 ? 0.42 : -0.42; }
+  }
+  //__PART3__
+
+  // ===== voice (recorded mp3 lines) + speech bubble =====
+  var bubble=document.getElementById('bubble'),
+      bText=document.getElementById('bubbleText'),
+      bTag=document.getElementById('bubbleTag'), bubbleTimer=null;
+
+  var VOICE_GENDER='female';
+  var PREFIX={ male:'wolf_alive', female:'wolf_female' };
+  var COUNTS={ click:6, good:4, hot:5, random:2 };   // multi-take categories
+  var audioEl=new Audio(); audioEl.volume=1.0; audioEl.preload='auto';
+  audioEl.addEventListener('ended', function(){ talking=false;
+    if(poseState==='talk') setState('idle'); });
+  audioEl.addEventListener('error', function(){ talking=false;
+    if(poseState==='talk') setState('idle'); });
+
+  function voiceFile(cat){
+    var g=VOICE_GENDER, pre=PREFIX[g]||PREFIX.female;
+    if(cat==='startup'||cat==='shutdown') return 'voices/'+g+'/'+pre+'_'+cat+'.mp3';
+    var n=COUNTS[cat]; if(!n) return null;
+    var i=1+Math.floor(Math.random()*n), nn=(i<10?'0':'')+i;
+    return 'voices/'+g+'/'+pre+'_'+cat+'_'+nn+'.mp3';
+  }
+  function playVoice(cat){
+    var f=voiceFile(cat); if(!f) return false;
+    try{
+      audioEl.src=f; audioEl.currentTime=0; talking=true;
+      if(poseState!=='sleep') setState('talk');
+      var pr=audioEl.play();
+      if(pr && pr['catch']) pr['catch'](function(){ talking=false; });
+      return true;
+    }catch(e){ talking=false; return false; }
+  }
+
+  function speak(text, tag, mood, cat){
+    if(text){
+      bTag.textContent = tag || 'Nova';
+      bText.textContent = text;
+      bubble.className='show';
+      if(bubbleTimer) clearTimeout(bubbleTimer);
+      var ms = Math.min(9000, 2200 + text.length*55);
+      bubbleTimer = setTimeout(function(){ bubble.className=''; }, ms);
+    }
+    var played = cat ? playVoice(cat) : false;
+    if(played) return;   // recorded line is playing; it drives the talk pose
+    // Fallback to the browser voice when no recorded line was requested/available.
+    if(text && poseState!=='sleep'){ talking=true; setState('talk'); }
+    try{
+      if(window.speechSynthesis && text){
+        var u=new SpeechSynthesisUtterance(text);
+        u.rate=1.0; u.pitch=(mood==='warn')?0.98:1.06; u.volume=1.0;
+        var vs=window.speechSynthesis.getVoices();
+        var wantFemale = (VOICE_GENDER==='female');
+        var pick=vs.find(function(v){
+          return wantFemale ? /female|zira|hazel|female|susan|aria/i.test(v.name)
+                            : /male|david|george|mark|guy/i.test(v.name);
+        }) || vs.find(function(v){return /en-GB|en-US/i.test(v.lang);}) || vs[0];
+        if(pick) u.voice=pick;
+        u.onend=function(){ talking=false; if(poseState==='talk') setState('idle'); };
+        window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+      } else { talking=false; }
+    }catch(e){ talking=false; }
+  }
+
+  // ===== public API used by the C# host via ExecuteScriptAsync =====
+  window.Companion = {
+    play:    function(s){ setState(String(s||'idle')); },
+    face:    function(d){ setFacing(Number(d)||1); },
+    speak:   function(t,tag,mood,cat){ speak(String(t||''), tag, mood, cat?String(cat):''); },
+    voice:   function(cat){ playVoice(String(cat||'')); },
+    setVoice:function(g){ VOICE_GENDER=(String(g||'').toLowerCase()==='male')?'male':'female'; },
+    hush:    function(){ try{window.speechSynthesis.cancel();}catch(e){}
+                          try{audioEl.pause();}catch(e){} talking=false; bubble.className=''; }
+  };
+
+  // ===== render loop =====
+  function animate(){
+    requestAnimationFrame(animate);
+    var dt = clock.getDelta();
+    if(mixer) mixer.update(dt);     // drives the authored clips
+    applyPose(dt);                  // drives idle / talk / sit / play / sleep
+    renderer.render(scene, camera);
+  }
+
+  clock = new THREE.Clock();
+  if(window.speechSynthesis){ window.speechSynthesis.onvoiceschanged=function(){}; }
+  try { init(); animate(); }
+  catch(e){ toHost({type:'error', msg:'init failed: ' + (e && e.message ? e.message : e)}); }
+  </script>
+</body>
+</html>

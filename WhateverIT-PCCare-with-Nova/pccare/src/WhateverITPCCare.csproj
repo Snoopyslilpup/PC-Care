@@ -1,0 +1,81 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- Needed for the system-tray icon + toast balloons used by the Pro
+         automatic background health check (System.Windows.Forms.NotifyIcon). -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>WhateverITPCCare</RootNamespace>
+    <AssemblyName>WhateverITPCCare</AssemblyName>
+    <Version>1.0.0</Version>
+    <Company>Whatever IT</Company>
+    <Product>Whatever IT PC Care</Product>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <!-- Self-contained single-file publish so customers need NO .NET install -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WinForms is referenced ONLY for the system-tray NotifyIcon, reached via
+         the explicit `WinForms` alias in AutoScanService. Keep the assemblies,
+         but DON'T inject System.Windows.Forms / System.Drawing into every file's
+         implicit global usings - they collide head-on with the WPF types this
+         app actually uses (Application, ProgressBar, Timer, Color, MessageBox,
+         Image, Brush, Pen, ...), which is what breaks the build. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bumped to 10.0.2 to satisfy LibreHardwareMonitorLib's requirement
+         (it needs System.Management >= 10.0.2). Avoids NU1605 downgrade error. -->
+    <PackageReference Include="System.Management" Version="10.0.2" />
+    <!-- Built-in hardware sensor reader: reads CPU / motherboard / GPU
+         temperatures and fan speeds directly from the hardware, so temperature
+         monitoring works WITHOUT installing any third-party tool. It loads a
+         small signed sensor driver, which needs the app to run as
+         administrator. Pinned to 0.9.6 so its System.Management dependency
+         (>= 10.0.2) matches ours exactly and restore stays deterministic. -->
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <!-- Embedded in-app payment page (SimplyBlu checkout). Uses the Evergreen
+         WebView2 runtime that ships with Windows 10/11. Floating 1.0.* so the
+         restore always resolves a valid published build. -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Assets\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Brand wolf logo, embedded so it renders in the app UI. -->
+    <Resource Include="Assets\wolf-logo.png" />
+    <!-- Mascot shown on "The Rig" dashboard hero card. -->
+    <Resource Include="Assets\rig-wolf.jpg" />
+    <!-- New branded wolf mascot (PC Care+) - hero mascot. -->
+    <Resource Include="Assets\wolf-mascot.png" />
+    <!-- Blue-to-red circuit dial art behind the live CPU temperature readout. -->
+    <Resource Include="Assets\cpu-dial.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Desktop companion ("Nova" the rigged 3D wolf): the glTF model, the
+         local three.js renderer and the overlay page. Copied next to the exe so
+         the companion's WebView2 overlay can load them from a mapped virtual
+         host. Kept external (not embedded) because the model is large. -->
+    <Content Include="Assets\companion\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Assets\companion\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
+</Project>

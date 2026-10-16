@@ -1,0 +1,45 @@
+WHATEVER IT PC CARE - END USER LICENCE AGREEMENT (TEMPLATE)
+===========================================================
+This is a starter template, NOT legal advice. Have it reviewed for your
+jurisdiction before you rely on it.
+
+1. LICENCE
+   Whatever IT grants you a non-exclusive, non-transferable licence to install
+   and use Whatever IT PC Care ("the Software") on computers you own or control.
+   - Basic: a perpetual licence for the version purchased.
+   - Pro: a subscription licence valid until the stated expiry date, including
+     advanced repair features and updates during the subscription term.
+
+2. WHAT THE SOFTWARE DOES
+   The Software provides read-only diagnostics and a set of safe, well-known
+   Windows maintenance actions. It explains what each action does before it
+   runs and asks for your confirmation. It does not guarantee that every problem
+   can be fixed automatically.
+
+3. NO WARRANTY
+   The Software is provided "as is" without warranties of any kind to the extent
+   permitted by law. You remain responsible for backing up your data. Whatever
+   IT is not liable for data loss or damage arising from use of the Software,
+   except as required by applicable consumer-protection law.
+
+4. SAFE USE
+   Some actions (e.g. emptying the Recycle Bin, repairing system files) are
+   irreversible or require Administrator rights. Only run them if you understand
+   and accept what they do. For problems beyond safe self-repair, contact
+   Whatever IT for paid assistance.
+
+5. LICENCE KEYS
+   Licence keys are issued to a named person/organisation and may not be shared
+   or resold. Whatever IT may deactivate keys obtained or used in breach of this
+   agreement.
+
+6. PRIVACY
+   The Software performs its checks locally on your PC. It does not transmit the
+   contents of your files. (Adapt this clause to match your actual data
+   practices and POPIA/GDPR obligations.)
+
+7. GOVERNING LAW
+   This agreement is governed by the laws of [your jurisdiction, e.g. the
+   Republic of South Africa].
+
+(c) Whatever IT. All rights reserved.
